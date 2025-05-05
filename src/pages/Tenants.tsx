@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -81,7 +80,7 @@ const Tenants = () => {
     },
     onSuccess: () => {
       toast("Inquilino adicionado", {
-        description: "O inquilino foi adicionado com sucesso.",
+        description: "O inquilino foi adicionado com sucesso."
       });
       form.reset();
       setIsAddTenantOpen(false);
@@ -89,8 +88,7 @@ const Tenants = () => {
     },
     onError: () => {
       toast("Erro", {
-        description: "Não foi possível adicionar o inquilino. Tente novamente.",
-        variant: "destructive",
+        description: "Não foi possível adicionar o inquilino. Tente novamente."
       });
     },
   });

@@ -1,7 +1,6 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Property } from "@/lib/types";
-import { getProperties, getTenants } from "@/lib/mockData";
+import { getProperties, getTenants, addProperty } from "@/lib/mockData";
 import { Building, Plus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
@@ -37,8 +36,9 @@ const Properties = () => {
     status: "available"
   });
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const { data: properties = [], isLoading, refetch } = useQuery({
+  const { data: properties = [], isLoading } = useQuery({
     queryKey: ["properties"],
     queryFn: getProperties,
   });
@@ -46,6 +46,42 @@ const Properties = () => {
   const { data: tenants = [] } = useQuery({
     queryKey: ["tenants"],
     queryFn: getTenants,
+  });
+
+  const addPropertyMutation = useMutation({
+    mutationFn: (data: Omit<Property, "id">) => {
+      return addProperty(data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Imóvel adicionado",
+        description: `${newProperty.name} foi adicionado com sucesso.`,
+      });
+      
+      setIsAddPropertyOpen(false);
+      setNewProperty({
+        name: "",
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        type: "Apartamento",
+        bedrooms: 1,
+        bathrooms: 1,
+        area: 0,
+        status: "available"
+      });
+      
+      // Refresh the properties data
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar o imóvel. Tente novamente.",
+        variant: "destructive",
+      });
+    },
   });
 
   const filteredProperties = properties.filter(
@@ -84,34 +120,30 @@ const Properties = () => {
   };
 
   const handleAddProperty = async () => {
-    // Simulando adição de propriedade em um ambiente real
-    // Na implementação com backend, aqui seria um post para API
-    console.log("Nova propriedade:", newProperty);
+    // Check if required fields are filled
+    if (!newProperty.name || !newProperty.address || !newProperty.city) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+      });
+      return;
+    }
     
-    toast({
-      title: "Imóvel adicionado",
-      description: `${newProperty.name} foi adicionado com sucesso.`,
-    });
+    // Convert the partial property to a complete property minus the ID which will be added by the API
+    const propertyToAdd = {
+      name: newProperty.name!,
+      address: newProperty.address!,
+      city: newProperty.city!,
+      state: newProperty.state || "",
+      zipCode: newProperty.zipCode || "",
+      type: newProperty.type || "Apartamento",
+      bedrooms: newProperty.bedrooms || 0,
+      bathrooms: newProperty.bathrooms || 0,
+      area: newProperty.area || 0,
+      status: "available" as const,
+    };
     
-    setIsAddPropertyOpen(false);
-    setNewProperty({
-      name: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      type: "Apartamento",
-      bedrooms: 1,
-      bathrooms: 1,
-      area: 0,
-      status: "available"
-    });
-    
-    // Em um ambiente real, após adicionar, recarregaria os dados
-    // Aqui estamos apenas simulando para a interface
-    setTimeout(() => {
-      refetch();
-    }, 500);
+    addPropertyMutation.mutate(propertyToAdd);
   };
 
   return (

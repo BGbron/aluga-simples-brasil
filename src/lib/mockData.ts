@@ -232,3 +232,16 @@ export const deleteProperty = (id: string): Promise<boolean> => {
     }, 300);
   });
 };
+
+export const addProperty = (property: Omit<Property, "id">): Promise<Property> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const newProperty: Property = {
+        ...property,
+        id: `p${mockProperties.length + 1}`,
+      };
+      mockProperties.push(newProperty);
+      resolve(newProperty);
+    }, 500);
+  });
+};
