@@ -75,7 +75,8 @@ export const mockTenants: Tenant[] = [
   }
 ];
 
-export const mockPayments: Payment[] = [
+// Cache local para simular a persistência entre chamadas de API
+let paymentCache = [
   {
     id: "pay1",
     tenantId: "t1",
@@ -141,7 +142,30 @@ export const getTenants = (): Promise<Tenant[]> => {
 
 export const getPayments = (): Promise<Payment[]> => {
   return new Promise((resolve) => {
-    setTimeout(() => resolve(mockPayments), 500);
+    // Simular a recuperação dos dados do cache
+    setTimeout(() => resolve([...paymentCache]), 500);
+  });
+};
+
+export const updatePayment = (id: string, data: Partial<Payment>): Promise<Payment> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      // Encontrar o pagamento no cache
+      const index = paymentCache.findIndex(p => p.id === id);
+      if (index !== -1) {
+        // Atualizar o pagamento
+        paymentCache[index] = { ...paymentCache[index], ...data };
+        
+        // Se estiver marcando como pago, adicionar a data de pagamento
+        if (data.status === "paid" && !paymentCache[index].paidDate) {
+          paymentCache[index].paidDate = new Date().toISOString();
+        }
+        
+        resolve(paymentCache[index]);
+      } else {
+        reject(new Error("Pagamento não encontrado"));
+      }
+    }, 300);
   });
 };
 
@@ -159,12 +183,12 @@ export const getTenant = (id: string): Promise<Tenant | undefined> => {
 
 export const getPaymentsForTenant = (tenantId: string): Promise<Payment[]> => {
   return new Promise((resolve) => {
-    setTimeout(() => resolve(mockPayments.filter(p => p.tenantId === tenantId)), 500);
+    setTimeout(() => resolve(paymentCache.filter(p => p.tenantId === tenantId)), 500);
   });
 };
 
 export const getPaymentsForProperty = (propertyId: string): Promise<Payment[]> => {
   return new Promise((resolve) => {
-    setTimeout(() => resolve(mockPayments.filter(p => p.propertyId === propertyId)), 500);
+    setTimeout(() => resolve(paymentCache.filter(p => p.propertyId === propertyId)), 500);
   });
 };

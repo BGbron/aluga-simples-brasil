@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,14 +15,28 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Payment, PaymentStatus } from "@/lib/types";
 import { getPayments, getTenants, getProperties } from "@/lib/mockData";
-import { Calendar, CreditCard, Plus, Search, ArrowUpDown } from "lucide-react";
+import { Calendar, CreditCard, Plus, Search, ArrowUpDown, Check } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 
 const Payments = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | "all">("all");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast: uiToast } = useToast();
 
-  const { data: payments = [] } = useQuery({
+  const { data: payments = [], refetch } = useQuery({
     queryKey: ["payments"],
     queryFn: getPayments,
   });
@@ -36,6 +50,39 @@ const Payments = () => {
     queryKey: ["properties"],
     queryFn: getProperties,
   });
+
+  // Mutation para marcar pagamento como pago
+  const markAsPaidMutation = useMutation({
+    mutationFn: async (paymentId: string) => {
+      // Simulando uma chamada de API para atualizar o pagamento
+      console.log(`Marcando pagamento ${paymentId} como pago`);
+      return { success: true, paymentId };
+    },
+    onSuccess: (data) => {
+      // Atualizar a cache de dados após o sucesso
+      toast("Pagamento atualizado", {
+        description: "O pagamento foi marcado como pago com sucesso.",
+      });
+      
+      // Em um ambiente real, recarregaria os dados
+      // Aqui estamos apenas simulando para a interface
+      setTimeout(() => {
+        refetch();
+      }, 500);
+    },
+    onError: (error) => {
+      console.error("Erro ao marcar como pago:", error);
+      uiToast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível marcar o pagamento como pago. Tente novamente.",
+      });
+    },
+  });
+
+  const handleMarkAsPaid = (paymentId: string) => {
+    markAsPaidMutation.mutate(paymentId);
+  };
 
   // Filter payments based on search term and status
   const filteredPayments = payments
@@ -92,10 +139,38 @@ const Payments = () => {
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <h1 className="text-2xl font-bold">Pagamentos</h1>
-        <Button className="shrink-0">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Pagamento
-        </Button>
+        <Dialog open={isAddPaymentOpen} onOpenChange={setIsAddPaymentOpen}>
+          <DialogTrigger asChild>
+            <Button className="shrink-0">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Pagamento
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[550px]">
+            <DialogHeader>
+              <DialogTitle>Novo Pagamento</DialogTitle>
+              <DialogDescription>
+                Crie um novo registro de pagamento para um inquilino.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <p>Formulário a ser implementado em uma futura atualização.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddPaymentOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={() => {
+                toast("Pagamento criado", {
+                  description: "Um novo pagamento foi registrado com sucesso.",
+                });
+                setIsAddPaymentOpen(false);
+              }}>
+                Criar Pagamento
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -186,6 +261,7 @@ const Payments = () => {
                 properties={properties}
                 getStatusColor={getStatusColor}
                 getStatusText={getStatusText}
+                onMarkAsPaid={handleMarkAsPaid}
               />
             </TabsContent>
             <TabsContent value="pending" className="mt-4">
@@ -195,6 +271,7 @@ const Payments = () => {
                 properties={properties}
                 getStatusColor={getStatusColor}
                 getStatusText={getStatusText}
+                onMarkAsPaid={handleMarkAsPaid}
               />
             </TabsContent>
             <TabsContent value="overdue" className="mt-4">
@@ -204,6 +281,7 @@ const Payments = () => {
                 properties={properties}
                 getStatusColor={getStatusColor}
                 getStatusText={getStatusText}
+                onMarkAsPaid={handleMarkAsPaid}
               />
             </TabsContent>
             <TabsContent value="paid" className="mt-4">
@@ -213,6 +291,7 @@ const Payments = () => {
                 properties={properties}
                 getStatusColor={getStatusColor}
                 getStatusText={getStatusText}
+                onMarkAsPaid={handleMarkAsPaid}
               />
             </TabsContent>
           </Tabs>
@@ -228,6 +307,7 @@ interface PaymentListProps {
   properties: any[];
   getStatusColor: (status: PaymentStatus) => string;
   getStatusText: (status: PaymentStatus) => string;
+  onMarkAsPaid: (paymentId: string) => void;
 }
 
 const PaymentList: React.FC<PaymentListProps> = ({
@@ -236,6 +316,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
   properties,
   getStatusColor,
   getStatusText,
+  onMarkAsPaid
 }) => {
   if (payments.length === 0) {
     return (
@@ -318,13 +399,16 @@ const PaymentList: React.FC<PaymentListProps> = ({
                   </span>
                 </div>
                 <div className="ml-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={payment.status === "paid" ? "hidden" : ""}
-                  >
-                    Marcar como Pago
-                  </Button>
+                  {payment.status !== "paid" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onMarkAsPaid(payment.id)}
+                    >
+                      <Check className="mr-1 h-3 w-3" />
+                      Marcar como Pago
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

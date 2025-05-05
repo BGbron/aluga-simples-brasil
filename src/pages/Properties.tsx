@@ -5,14 +5,40 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Property } from "@/lib/types";
 import { getProperties, getTenants } from "@/lib/mockData";
 import { Building, Plus, Search } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Properties = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
+  const [newProperty, setNewProperty] = useState<Partial<Property>>({
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    type: "Apartamento",
+    bedrooms: 1,
+    bathrooms: 1,
+    area: 0,
+    status: "available"
+  });
+  const { toast } = useToast();
 
-  const { data: properties = [], isLoading } = useQuery({
+  const { data: properties = [], isLoading, refetch } = useQuery({
     queryKey: ["properties"],
     queryFn: getProperties,
   });
@@ -34,14 +60,196 @@ const Properties = () => {
     return tenant ? tenant.name : "Sem inquilino";
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewProperty(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewProperty(prev => ({
+      ...prev,
+      [name]: parseInt(value) || 0
+    }));
+  };
+
+  const handleSelectChange = (value: string, name: string) => {
+    setNewProperty(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleAddProperty = async () => {
+    // Simulando adição de propriedade em um ambiente real
+    // Na implementação com backend, aqui seria um post para API
+    console.log("Nova propriedade:", newProperty);
+    
+    toast({
+      title: "Imóvel adicionado",
+      description: `${newProperty.name} foi adicionado com sucesso.`,
+    });
+    
+    setIsAddPropertyOpen(false);
+    setNewProperty({
+      name: "",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      type: "Apartamento",
+      bedrooms: 1,
+      bathrooms: 1,
+      area: 0,
+      status: "available"
+    });
+    
+    // Em um ambiente real, após adicionar, recarregaria os dados
+    // Aqui estamos apenas simulando para a interface
+    setTimeout(() => {
+      refetch();
+    }, 500);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <h1 className="text-2xl font-bold">Imóveis</h1>
-        <Button className="shrink-0">
-          <Plus className="mr-2 h-4 w-4" />
-          Adicionar Imóvel
-        </Button>
+        <Dialog open={isAddPropertyOpen} onOpenChange={setIsAddPropertyOpen}>
+          <DialogTrigger asChild>
+            <Button className="shrink-0">
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar Imóvel
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[550px]">
+            <DialogHeader>
+              <DialogTitle>Adicionar Novo Imóvel</DialogTitle>
+              <DialogDescription>
+                Preencha os dados do novo imóvel abaixo.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome do Imóvel</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={newProperty.name}
+                    onChange={handleInputChange}
+                    placeholder="Ex: Apartamento Centro"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="type">Tipo</Label>
+                  <Select 
+                    value={newProperty.type} 
+                    onValueChange={(value) => handleSelectChange(value, "type")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Apartamento">Apartamento</SelectItem>
+                      <SelectItem value="Casa">Casa</SelectItem>
+                      <SelectItem value="Kitnet">Kitnet</SelectItem>
+                      <SelectItem value="Comercial">Comercial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="address">Endereço</Label>
+                <Input
+                  id="address"
+                  name="address"
+                  value={newProperty.address}
+                  onChange={handleInputChange}
+                  placeholder="Rua, número, complemento"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input
+                    id="city"
+                    name="city"
+                    value={newProperty.city}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">Estado</Label>
+                  <Input
+                    id="state"
+                    name="state"
+                    value={newProperty.state}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zipCode">CEP</Label>
+                  <Input
+                    id="zipCode"
+                    name="zipCode"
+                    value={newProperty.zipCode}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="bedrooms">Quartos</Label>
+                  <Input
+                    id="bedrooms"
+                    name="bedrooms"
+                    type="number"
+                    min="0"
+                    value={newProperty.bedrooms}
+                    onChange={handleNumberInputChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bathrooms">Banheiros</Label>
+                  <Input
+                    id="bathrooms"
+                    name="bathrooms"
+                    type="number"
+                    min="0"
+                    value={newProperty.bathrooms}
+                    onChange={handleNumberInputChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="area">Área (m²)</Label>
+                  <Input
+                    id="area"
+                    name="area"
+                    type="number"
+                    min="0"
+                    value={newProperty.area}
+                    onChange={handleNumberInputChange}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddPropertyOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAddProperty}>
+                Adicionar Imóvel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="relative">
@@ -131,7 +339,7 @@ const Properties = () => {
               : "Você ainda não tem imóveis cadastrados."}
           </p>
           {!searchTerm && (
-            <Button>
+            <Button onClick={() => setIsAddPropertyOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Adicionar Imóvel
             </Button>
