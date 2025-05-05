@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Payment, PaymentStatus } from "@/lib/types";
-import { getPayments, getTenants, getProperties } from "@/lib/mockData";
+import { getPayments, getTenants, getProperties, updatePayment } from "@/lib/mockData";
 import { Calendar, CreditCard, Plus, Search, ArrowUpDown, Check } from "lucide-react";
 import {
   Dialog,
@@ -36,7 +35,7 @@ const Payments = () => {
   const queryClient = useQueryClient();
   const { toast: uiToast } = useToast();
 
-  const { data: payments = [], refetch } = useQuery({
+  const { data: payments = [], isLoading: isPaymentsLoading } = useQuery({
     queryKey: ["payments"],
     queryFn: getPayments,
   });
@@ -53,22 +52,17 @@ const Payments = () => {
 
   // Mutation para marcar pagamento como pago
   const markAsPaidMutation = useMutation({
-    mutationFn: async (paymentId: string) => {
-      // Simulando uma chamada de API para atualizar o pagamento
-      console.log(`Marcando pagamento ${paymentId} como pago`);
-      return { success: true, paymentId };
+    mutationFn: (paymentId: string) => {
+      return updatePayment(paymentId, { status: "paid" as PaymentStatus });
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Atualizar a cache de dados após o sucesso
       toast("Pagamento atualizado", {
         description: "O pagamento foi marcado como pago com sucesso.",
       });
       
-      // Em um ambiente real, recarregaria os dados
-      // Aqui estamos apenas simulando para a interface
-      setTimeout(() => {
-        refetch();
-      }, 500);
+      // Recarregar os dados após a atualização
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
     },
     onError: (error) => {
       console.error("Erro ao marcar como pago:", error);

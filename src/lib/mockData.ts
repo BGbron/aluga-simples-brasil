@@ -1,4 +1,3 @@
-
 import { Property, Tenant, Payment, PaymentStatus } from "./types";
 
 export const mockProperties: Property[] = [
@@ -158,7 +157,7 @@ export const updatePayment = (id: string, data: Partial<Payment>): Promise<Payme
         
         // Se estiver marcando como pago, adicionar a data de pagamento
         if (data.status === "paid" && !paymentCache[index].paidDate) {
-          paymentCache[index].paidDate = new Date().toISOString();
+          paymentCache[index].paidDate = new Date().toISOString().split('T')[0];
         }
         
         resolve(paymentCache[index]);
@@ -190,5 +189,46 @@ export const getPaymentsForTenant = (tenantId: string): Promise<Payment[]> => {
 export const getPaymentsForProperty = (propertyId: string): Promise<Payment[]> => {
   return new Promise((resolve) => {
     setTimeout(() => resolve(paymentCache.filter(p => p.propertyId === propertyId)), 500);
+  });
+};
+
+export const addTenant = (tenant: Omit<Tenant, "id">): Promise<Tenant> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const newTenant: Tenant = {
+        ...tenant,
+        id: `t${mockTenants.length + 1}`,
+      };
+      mockTenants.push(newTenant);
+      resolve(newTenant);
+    }, 500);
+  });
+};
+
+export const updateProperty = (id: string, data: Partial<Property>): Promise<Property> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const index = mockProperties.findIndex(p => p.id === id);
+      if (index !== -1) {
+        mockProperties[index] = { ...mockProperties[index], ...data };
+        resolve(mockProperties[index]);
+      } else {
+        reject(new Error("Imóvel não encontrado"));
+      }
+    }, 300);
+  });
+};
+
+export const deleteProperty = (id: string): Promise<boolean> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const index = mockProperties.findIndex(p => p.id === id);
+      if (index !== -1) {
+        mockProperties.splice(index, 1);
+        resolve(true);
+      } else {
+        reject(new Error("Imóvel não encontrado"));
+      }
+    }, 300);
   });
 };

@@ -1,22 +1,71 @@
 
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building, Users, Calendar, ChevronLeft, Edit, Trash } from "lucide-react";
-import { getProperty, getTenants, getPaymentsForProperty } from "@/lib/mockData";
+import { getProperty, getTenants, getPaymentsForProperty, updateProperty, deleteProperty } from "@/lib/mockData";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("details");
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    bedrooms: 0,
+    bathrooms: 0,
+    area: 0,
+  });
 
   const { data: property, isLoading: isPropertyLoading } = useQuery({
     queryKey: ["property", id],
     queryFn: () => getProperty(id as string),
     enabled: !!id,
+    onSuccess: (data) => {
+      if (data) {
+        setFormData({
+          name: data.name,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          zipCode: data.zipCode,
+          bedrooms: data.bedrooms,
+          bathrooms: data.bathrooms,
+          area: data.area,
+        });
+      }
+    },
   });
 
   const { data: tenants = [] } = useQuery({
@@ -29,6 +78,62 @@ const PropertyDetails = () => {
     queryFn: () => getPaymentsForProperty(id as string),
     enabled: !!id,
   });
+
+  const updatePropertyMutation = useMutation({
+    mutationFn: (data: typeof formData) => {
+      return updateProperty(id as string, data);
+    },
+    onSuccess: () => {
+      toast("Imóvel atualizado", {
+        description: "As informações do imóvel foram atualizadas com sucesso.",
+      });
+      setIsEditOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["property", id] });
+    },
+    onError: () => {
+      toast("Erro", {
+        description: "Não foi possível atualizar o imóvel. Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePropertyMutation = useMutation({
+    mutationFn: () => {
+      return deleteProperty(id as string);
+    },
+    onSuccess: () => {
+      toast("Imóvel excluído", {
+        description: "O imóvel foi excluído com sucesso.",
+      });
+      navigate("/imoveis");
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+    },
+    onError: () => {
+      toast("Erro", {
+        description: "Não foi possível excluir o imóvel. Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === "bedrooms" || name === "bathrooms" || name === "area" 
+        ? Number(value) 
+        : value,
+    }));
+  };
+
+  const handleUpdateProperty = () => {
+    updatePropertyMutation.mutate(formData);
+  };
+
+  const handleDeleteProperty = () => {
+    deletePropertyMutation.mutate();
+  };
 
   const tenant = tenants.find((t) => t.propertyId === id);
 
@@ -63,14 +168,136 @@ const PropertyDetails = () => {
           </span>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Edit className="mr-2 h-4 w-4" />
-            Editar
-          </Button>
-          <Button variant="outline" size="sm" className="text-destructive">
-            <Trash className="mr-2 h-4 w-4" />
-            Excluir
-          </Button>
+          <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Edit className="mr-2 h-4 w-4" />
+                Editar
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[550px]">
+              <DialogHeader>
+                <DialogTitle>Editar Imóvel</DialogTitle>
+                <DialogDescription>
+                  Atualize as informações do imóvel.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="name" className="text-sm font-medium">Nome</label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="address" className="text-sm font-medium">Endereço</label>
+                    <Input
+                      id="address"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="city" className="text-sm font-medium">Cidade</label>
+                    <Input
+                      id="city"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="state" className="text-sm font-medium">Estado</label>
+                    <Input
+                      id="state"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="zipCode" className="text-sm font-medium">CEP</label>
+                    <Input
+                      id="zipCode"
+                      name="zipCode"
+                      value={formData.zipCode}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="bedrooms" className="text-sm font-medium">Quartos</label>
+                    <Input
+                      id="bedrooms"
+                      name="bedrooms"
+                      type="number"
+                      value={formData.bedrooms}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="bathrooms" className="text-sm font-medium">Banheiros</label>
+                    <Input
+                      id="bathrooms"
+                      name="bathrooms"
+                      type="number"
+                      value={formData.bathrooms}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="area" className="text-sm font-medium">Área (m²)</label>
+                    <Input
+                      id="area"
+                      name="area"
+                      type="number"
+                      value={formData.area}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleUpdateProperty} disabled={updatePropertyMutation.isPending}>
+                  {updatePropertyMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
+          <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="text-destructive">
+                <Trash className="mr-2 h-4 w-4" />
+                Excluir
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. Isso excluirá permanentemente o imóvel e todos os dados associados a ele.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleDeleteProperty}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={deletePropertyMutation.isPending}
+                >
+                  {deletePropertyMutation.isPending ? "Excluindo..." : "Excluir"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -198,6 +425,7 @@ const PropertyDetails = () => {
                     variant="outline"
                     size="sm"
                     className="mt-4"
+                    onClick={() => navigate("/inquilinos")}
                   >
                     Adicionar Inquilino
                   </Button>
