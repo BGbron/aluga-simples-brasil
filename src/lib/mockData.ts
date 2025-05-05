@@ -1,5 +1,5 @@
 
-import { Property, Tenant, Payment } from "./types";
+import { Property, Tenant, Payment, PaymentStatus } from "./types";
 
 export const mockProperties: Property[] = [
   {
@@ -76,7 +76,7 @@ export const mockTenants: Tenant[] = [
 ];
 
 // Cache local para simular a persistência entre chamadas de API
-let paymentCache = [
+let paymentCache: Payment[] = [
   {
     id: "pay1",
     tenantId: "t1",
