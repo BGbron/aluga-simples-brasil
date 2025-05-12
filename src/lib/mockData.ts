@@ -42,6 +42,35 @@ export const getPayments = (): Promise<Payment[]> => {
   });
 };
 
+// Adiciona um novo pagamento
+export const addPayment = (data: Omit<Payment, "id" | "paidDate">): Promise<Payment> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Criar novo pagamento
+      const newPayment: Payment = {
+        ...data,
+        id: `pay${paymentCache.length + 1}`,
+        status: data.status || "pending",
+      };
+
+      // Verificar se a data de vencimento já passou
+      const dueDate = new Date(newPayment.dueDate);
+      const today = new Date();
+      if (dueDate < today && newPayment.status === "pending") {
+        newPayment.status = "overdue";
+      }
+
+      // Adicionar ao cache
+      paymentCache.push(newPayment);
+      
+      // Salvar no localStorage
+      saveLocalData('payments', paymentCache);
+      
+      resolve(newPayment);
+    }, 500);
+  });
+};
+
 export const updatePayment = (id: string, data: Partial<Payment>): Promise<Payment> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {

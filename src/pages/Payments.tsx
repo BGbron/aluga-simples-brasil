@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Payment, PaymentStatus } from "@/lib/types";
-import { getPayments, getTenants, getProperties, updatePayment } from "@/lib/mockData";
+import { getPayments, getTenants, getProperties, updatePayment, addPayment } from "@/lib/mockData";
 import { Calendar, CreditCard, Plus, Search, ArrowUpDown, Check } from "lucide-react";
 import {
   Dialog,
@@ -26,6 +27,18 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { toast } from "@/components/ui/sonner";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+const paymentFormSchema = z.object({
+  tenantId: z.string().min(1, { message: "Por favor, selecione um inquilino" }),
+  propertyId: z.string().min(1, { message: "Por favor, selecione um imóvel" }),
+  amount: z.coerce.number().positive({ message: "O valor deve ser maior que zero" }),
+  dueDate: z.string().min(1, { message: "Por favor, selecione uma data de vencimento" }),
+  description: z.string().min(1, { message: "Por favor, adicione uma descrição" }),
+});
 
 const Payments = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -73,6 +86,50 @@ const Payments = () => {
       });
     },
   });
+
+  // Mutation para adicionar novo pagamento
+  const addPaymentMutation = useMutation({
+    mutationFn: addPayment,
+    onSuccess: () => {
+      // Fechar o diálogo e exibir notificação
+      setIsAddPaymentOpen(false);
+      toast("Pagamento criado", {
+        description: "Um novo pagamento foi registrado com sucesso.",
+      });
+      
+      // Recarregar os dados
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+    },
+    onError: (error) => {
+      console.error("Erro ao criar pagamento:", error);
+      uiToast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível criar o pagamento. Tente novamente.",
+      });
+    },
+  });
+
+  const form = useForm<z.infer<typeof paymentFormSchema>>({
+    resolver: zodResolver(paymentFormSchema),
+    defaultValues: {
+      tenantId: "",
+      propertyId: "",
+      amount: 0,
+      dueDate: new Date().toISOString().split("T")[0],
+      description: "",
+    },
+  });
+
+  function onSubmit(values: z.infer<typeof paymentFormSchema>) {
+    // Converter o valor para centavos para armazenamento
+    const newPayment = {
+      ...values,
+      status: "pending" as PaymentStatus
+    };
+    
+    addPaymentMutation.mutate(newPayment);
+  }
 
   const handleMarkAsPaid = (paymentId: string) => {
     markAsPaidMutation.mutate(paymentId);
@@ -147,22 +204,117 @@ const Payments = () => {
                 Crie um novo registro de pagamento para um inquilino.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <p>Formulário a ser implementado em uma futura atualização.</p>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddPaymentOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={() => {
-                toast("Pagamento criado", {
-                  description: "Um novo pagamento foi registrado com sucesso.",
-                });
-                setIsAddPaymentOpen(false);
-              }}>
-                Criar Pagamento
-              </Button>
-            </DialogFooter>
+
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="tenantId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Inquilino</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um inquilino" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {tenants.map((tenant) => (
+                            <SelectItem key={tenant.id} value={tenant.id}>
+                              {tenant.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="propertyId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Imóvel</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um imóvel" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {properties.map((property) => (
+                            <SelectItem key={property.id} value={property.id}>
+                              {property.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valor (R$)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data de Vencimento</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descrição</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter className="mt-6">
+                  <Button variant="outline" type="button" onClick={() => setIsAddPaymentOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={addPaymentMutation.isPending}>
+                    {addPaymentMutation.isPending ? "Criando..." : "Criar Pagamento"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
