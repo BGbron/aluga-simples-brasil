@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { Property } from "@/lib/types";
 import { getProperty, updateProperty, deleteProperty } from "@/lib/mockData";
-import { Building, Edit, Trash2, Home, Store, Apartment } from "lucide-react";
+import { Building, Edit, Trash2, Home, Store } from "lucide-react";
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -76,7 +75,7 @@ const PropertyDetails = () => {
       case "Casa":
         return <Home className="h-12 w-12 text-gray-400" />;
       case "Apartamento":
-        return <Apartment className="h-12 w-12 text-gray-400" />;
+        return <Building className="h-12 w-12 text-gray-400" />;
       case "Comercial":
       case "Kitnet":
         return <Store className="h-12 w-12 text-gray-400" />;
