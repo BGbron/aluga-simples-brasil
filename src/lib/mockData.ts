@@ -1,3 +1,4 @@
+
 import { Property, Tenant, Payment, PaymentStatus } from "./types";
 
 // Initial mock data (empty arrays)
@@ -146,20 +147,10 @@ export const deleteProperty = (id: string): Promise<boolean> => {
 export const addProperty = (property: Omit<Property, "id">): Promise<Property> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      // Generate property icon based on type
-      let imageUrl = "";
-      if (property.type === "Apartamento") {
-        imageUrl = "https://images.unsplash.com/photo-1580041065738-e72023775cdc?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60";
-      } else if (property.type === "Casa") {
-        imageUrl = "https://images.unsplash.com/photo-1568605114967-8130f3a36994?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60";
-      } else if (property.type === "Comercial" || property.type === "Kitnet") {
-        imageUrl = "https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60";
-      }
-      
+      // No longer assign default images - let the icon display instead
       const newProperty: Property = {
         ...property,
         id: `p${mockProperties.length + 1}`,
-        imageUrl
       };
       
       mockProperties.push(newProperty);
