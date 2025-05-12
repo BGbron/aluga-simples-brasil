@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Property } from "@/lib/types";
 import { getProperties, getTenants, addProperty } from "@/lib/mockData";
-import { Building, Plus, Search } from "lucide-react";
+import { Building, Plus, Search, Home, Store, Apartment } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -144,6 +145,21 @@ const Properties = () => {
     };
     
     addPropertyMutation.mutate(propertyToAdd);
+  };
+
+  // Function to get the appropriate icon based on property type
+  const getPropertyIcon = (type: string) => {
+    switch (type) {
+      case "Casa":
+        return <Home className="h-12 w-12 text-gray-400" />;
+      case "Apartamento":
+        return <Apartment className="h-12 w-12 text-gray-400" />;
+      case "Comercial":
+      case "Kitnet":
+        return <Store className="h-12 w-12 text-gray-400" />;
+      default:
+        return <Building className="h-12 w-12 text-gray-400" />;
+    }
   };
 
   return (
@@ -312,7 +328,7 @@ const Properties = () => {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <Building className="h-12 w-12 text-gray-400" />
+                      {getPropertyIcon(property.type)}
                     </div>
                   )}
                 </div>

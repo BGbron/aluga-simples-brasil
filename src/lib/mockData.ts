@@ -1,6 +1,8 @@
+
 import { Property, Tenant, Payment, PaymentStatus } from "./types";
 
-export const mockProperties: Property[] = [
+// Initial mock data
+const initialProperties: Property[] = [
   {
     id: "p1",
     name: "Residencial Jardins",
@@ -47,7 +49,7 @@ export const mockProperties: Property[] = [
   },
 ];
 
-export const mockTenants: Tenant[] = [
+const initialTenants: Tenant[] = [
   {
     id: "t1",
     name: "Maria Silva",
@@ -74,8 +76,7 @@ export const mockTenants: Tenant[] = [
   }
 ];
 
-// Cache local para simular a persistência entre chamadas de API
-let paymentCache: Payment[] = [
+const initialPayments: Payment[] = [
   {
     id: "pay1",
     tenantId: "t1",
@@ -126,16 +127,32 @@ let paymentCache: Payment[] = [
   }
 ];
 
+// Helper function to get data from localStorage or use initial data
+const getLocalData = <T>(key: string, initialData: T[]): T[] => {
+  const storedData = localStorage.getItem(key);
+  return storedData ? JSON.parse(storedData) : initialData;
+};
+
+// Helper function to save data to localStorage
+const saveLocalData = <T>(key: string, data: T[]): void => {
+  localStorage.setItem(key, JSON.stringify(data));
+};
+
+// Get data from localStorage or use initial data
+let mockProperties: Property[] = getLocalData<Property>('properties', initialProperties);
+let mockTenants: Tenant[] = getLocalData<Tenant>('tenants', initialTenants);
+let paymentCache: Payment[] = getLocalData<Payment>('payments', initialPayments);
+
 // Helper functions to simulate API calls
 export const getProperties = (): Promise<Property[]> => {
   return new Promise((resolve) => {
-    setTimeout(() => resolve(mockProperties), 500);
+    setTimeout(() => resolve([...mockProperties]), 500);
   });
 };
 
 export const getTenants = (): Promise<Tenant[]> => {
   return new Promise((resolve) => {
-    setTimeout(() => resolve(mockTenants), 500);
+    setTimeout(() => resolve([...mockTenants]), 500);
   });
 };
 
@@ -159,6 +176,9 @@ export const updatePayment = (id: string, data: Partial<Payment>): Promise<Payme
         if (data.status === "paid" && !paymentCache[index].paidDate) {
           paymentCache[index].paidDate = new Date().toISOString().split('T')[0];
         }
+        
+        // Save to localStorage
+        saveLocalData('payments', paymentCache);
         
         resolve(paymentCache[index]);
       } else {
@@ -200,6 +220,10 @@ export const addTenant = (tenant: Omit<Tenant, "id">): Promise<Tenant> => {
         id: `t${mockTenants.length + 1}`,
       };
       mockTenants.push(newTenant);
+      
+      // Save to localStorage
+      saveLocalData('tenants', mockTenants);
+      
       resolve(newTenant);
     }, 500);
   });
@@ -211,6 +235,10 @@ export const updateProperty = (id: string, data: Partial<Property>): Promise<Pro
       const index = mockProperties.findIndex(p => p.id === id);
       if (index !== -1) {
         mockProperties[index] = { ...mockProperties[index], ...data };
+        
+        // Save to localStorage
+        saveLocalData('properties', mockProperties);
+        
         resolve(mockProperties[index]);
       } else {
         reject(new Error("Imóvel não encontrado"));
@@ -225,6 +253,10 @@ export const deleteProperty = (id: string): Promise<boolean> => {
       const index = mockProperties.findIndex(p => p.id === id);
       if (index !== -1) {
         mockProperties.splice(index, 1);
+        
+        // Save to localStorage
+        saveLocalData('properties', mockProperties);
+        
         resolve(true);
       } else {
         reject(new Error("Imóvel não encontrado"));
@@ -236,11 +268,27 @@ export const deleteProperty = (id: string): Promise<boolean> => {
 export const addProperty = (property: Omit<Property, "id">): Promise<Property> => {
   return new Promise((resolve) => {
     setTimeout(() => {
+      // Generate property icon based on type
+      let imageUrl = "";
+      if (property.type === "Apartamento") {
+        imageUrl = "https://images.unsplash.com/photo-1580041065738-e72023775cdc?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60";
+      } else if (property.type === "Casa") {
+        imageUrl = "https://images.unsplash.com/photo-1568605114967-8130f3a36994?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60";
+      } else if (property.type === "Comercial" || property.type === "Kitnet") {
+        imageUrl = "https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60";
+      }
+      
       const newProperty: Property = {
         ...property,
         id: `p${mockProperties.length + 1}`,
+        imageUrl
       };
+      
       mockProperties.push(newProperty);
+      
+      // Save to localStorage
+      saveLocalData('properties', mockProperties);
+      
       resolve(newProperty);
     }, 500);
   });
