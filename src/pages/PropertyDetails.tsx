@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,17 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { Property } from "@/lib/types";
 import { getProperty, updateProperty, deleteProperty } from "@/lib/mockData";
@@ -87,6 +99,26 @@ const PropertyDetails = () => {
   const handleDelete = () => {
     setIsDeleting(true);
     deletePropertyMutation.mutate();
+  };
+
+  const handleEditSubmit = () => {
+    if (editedProperty) {
+      updatePropertyMutation.mutate(editedProperty);
+    }
+  };
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditedProperty(prev => prev ? { ...prev, [name]: value } : null);
+  };
+
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditedProperty(prev => prev ? { ...prev, [name]: parseInt(value) || 0 } : null);
+  };
+
+  const handleSelectChange = (value: string, field: string) => {
+    setEditedProperty(prev => prev ? { ...prev, [field]: value } : null);
   };
 
   if (isLoading) {
@@ -184,21 +216,155 @@ const PropertyDetails = () => {
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div className="p-4">
               <h3 className="mb-4 text-lg font-semibold">Imagem do Imóvel</h3>
-              {property.imageUrl ? (
-                <img
-                  src={property.imageUrl}
-                  alt={property.name}
-                  className="aspect-video w-full rounded-md object-cover"
-                />
-              ) : (
-                <div className="flex h-48 items-center justify-center rounded-md bg-muted">
-                  {getPropertyIcon(property.type)}
-                </div>
-              )}
+              <div className="flex h-48 items-center justify-center rounded-md bg-muted">
+                {getPropertyIcon(property.type)}
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Edit Property Dialog */}
+      <Dialog open={isEditing} onOpenChange={setIsEditing}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Editar Imóvel</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do imóvel nos campos abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome do Imóvel</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={editedProperty?.name || ""}
+                  onChange={handleEditChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="type">Tipo</Label>
+                <Select 
+                  value={editedProperty?.type || "Apartamento"}
+                  onValueChange={(value) => handleSelectChange(value, "type")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Apartamento">Apartamento</SelectItem>
+                    <SelectItem value="Casa">Casa</SelectItem>
+                    <SelectItem value="Kitnet">Kitnet</SelectItem>
+                    <SelectItem value="Comercial">Comercial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="address">Endereço</Label>
+              <Input
+                id="address"
+                name="address"
+                value={editedProperty?.address || ""}
+                onChange={handleEditChange}
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="city">Cidade</Label>
+                <Input
+                  id="city"
+                  name="city"
+                  value={editedProperty?.city || ""}
+                  onChange={handleEditChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="state">Estado</Label>
+                <Input
+                  id="state"
+                  name="state"
+                  value={editedProperty?.state || ""}
+                  onChange={handleEditChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="zipCode">CEP</Label>
+                <Input
+                  id="zipCode"
+                  name="zipCode"
+                  value={editedProperty?.zipCode || ""}
+                  onChange={handleEditChange}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="bedrooms">Quartos</Label>
+                <Input
+                  id="bedrooms"
+                  name="bedrooms"
+                  type="number"
+                  min="0"
+                  value={editedProperty?.bedrooms || 0}
+                  onChange={handleNumberChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bathrooms">Banheiros</Label>
+                <Input
+                  id="bathrooms"
+                  name="bathrooms"
+                  type="number"
+                  min="0"
+                  value={editedProperty?.bathrooms || 0}
+                  onChange={handleNumberChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="area">Área (m²)</Label>
+                <Input
+                  id="area"
+                  name="area"
+                  type="number"
+                  min="0"
+                  value={editedProperty?.area || 0}
+                  onChange={handleNumberChange}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select 
+                value={editedProperty?.status || "available"}
+                onValueChange={(value: "available" | "occupied") => handleSelectChange(value, "status")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Disponível</SelectItem>
+                  <SelectItem value="occupied">Ocupado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditing(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEditSubmit}>
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
