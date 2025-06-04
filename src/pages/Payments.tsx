@@ -1,54 +1,26 @@
-
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Payment, PaymentStatus } from "@/lib/types";
-import { getPayments, getTenants, getProperties, updatePayment, addPayment } from "@/lib/mockData";
-import { Calendar, CreditCard, Plus, Search, ArrowUpDown, Check } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { toast } from "@/components/ui/sonner";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-
-const paymentFormSchema = z.object({
-  tenantId: z.string().min(1, { message: "Por favor, selecione um inquilino" }),
-  propertyId: z.string().min(1, { message: "Por favor, selecione um imóvel" }),
-  amount: z.coerce.number().positive({ message: "O valor deve ser maior que zero" }),
-  dueDate: z.string().min(1, { message: "Por favor, selecione uma data de vencimento" }),
-  description: z.string().min(1, { message: "Por favor, adicione uma descrição" }),
-});
+import { Plus, Search, Filter, Calendar, Check } from "lucide-react";
+import { getPayments, addPayment, updatePayment, getTenants, getProperties } from "@/lib/mockData";
+import { Payment, PaymentStatus } from "@/lib/types";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const Payments = () => {
+  const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<PaymentStatus | "all">("all");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { toast: uiToast } = useToast();
 
-  const { data: payments = [], isLoading: isPaymentsLoading } = useQuery({
+  const { data: payments = [], isLoading: paymentsLoading } = useQuery({
     queryKey: ["payments"],
     queryFn: getPayments,
   });
@@ -63,504 +35,267 @@ const Payments = () => {
     queryFn: getProperties,
   });
 
-  // Mutation para marcar pagamento como pago
-  const markAsPaidMutation = useMutation({
-    mutationFn: (paymentId: string) => {
-      return updatePayment(paymentId, { status: "paid" as PaymentStatus });
-    },
-    onSuccess: () => {
-      // Atualizar a cache de dados após o sucesso
-      toast("Pagamento atualizado", {
-        description: "O pagamento foi marcado como pago com sucesso.",
-      });
-      
-      // Recarregar os dados após a atualização
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-    },
-    onError: (error) => {
-      console.error("Erro ao marcar como pago:", error);
-      uiToast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível marcar o pagamento como pago. Tente novamente.",
-      });
-    },
-  });
-
-  // Mutation para adicionar novo pagamento
-  const addPaymentMutation = useMutation({
+  const addMutation = useMutation({
     mutationFn: addPayment,
     onSuccess: () => {
-      // Fechar o diálogo e exibir notificação
-      setIsAddPaymentOpen(false);
-      toast("Pagamento criado", {
-        description: "Um novo pagamento foi registrado com sucesso.",
-      });
-      
-      // Recarregar os dados
       queryClient.invalidateQueries({ queryKey: ["payments"] });
-    },
-    onError: (error) => {
-      console.error("Erro ao criar pagamento:", error);
-      uiToast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível criar o pagamento. Tente novamente.",
+      setShowForm(false);
+      toast({
+        title: "Pagamento criado",
+        description: "O pagamento foi criado com sucesso.",
       });
     },
   });
 
-  const form = useForm<z.infer<typeof paymentFormSchema>>({
-    resolver: zodResolver(paymentFormSchema),
-    defaultValues: {
-      tenantId: "",
-      propertyId: "",
-      amount: 0,
-      dueDate: new Date().toISOString().split("T")[0],
-      description: "",
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Payment> }) =>
+      updatePayment(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      toast({
+        title: "Pagamento atualizado",
+        description: "O status do pagamento foi atualizado.",
+      });
     },
   });
 
-  function onSubmit(values: z.infer<typeof paymentFormSchema>) {
-    // Converter o valor para centavos para armazenamento
-    const newPayment = {
-      ...values,
-      status: "pending" as PaymentStatus
-    };
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
     
-    addPaymentMutation.mutate(newPayment);
-  }
+    const paymentData = {
+      description: formData.get("description") as string || "",
+      amount: Number(formData.get("amount")),
+      dueDate: formData.get("dueDate") as string,
+      tenantId: formData.get("tenantId") as string,
+      propertyId: formData.get("propertyId") as string,
+      status: "pending" as PaymentStatus,
+    };
 
-  const handleMarkAsPaid = (paymentId: string) => {
-    markAsPaidMutation.mutate(paymentId);
+    addMutation.mutate(paymentData);
   };
 
-  // Filter payments based on search term and status
-  const filteredPayments = payments
-    .filter((payment) => {
-      const tenant = tenants.find((t) => t.id === payment.tenantId);
-      const property = properties.find((p) => p.id === payment.propertyId);
-      
-      const searchMatch =
-        payment.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tenant?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property?.name.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const statusMatch = statusFilter === "all" || payment.status === statusFilter;
-      
-      return searchMatch && statusMatch;
-    })
-    .sort((a, b) => {
-      const dateA = new Date(a.dueDate).getTime();
-      const dateB = new Date(b.dueDate).getTime();
-      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+  const filteredPayments = payments.filter((payment) => {
+    const matchesSearch = payment.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusBadge = (status: PaymentStatus) => {
+    const variants = {
+      pending: "secondary",
+      paid: "default",
+      overdue: "destructive",
+    } as const;
+
+    const labels = {
+      pending: "Pendente",
+      paid: "Pago",
+      overdue: "Atrasado",
+    };
+
+    return (
+      <Badge variant={variants[status] as keyof typeof variants}>
+        {labels[status]}
+      </Badge>
+    );
+  };
+
+  const markAsPaid = (paymentId: string) => {
+    updateMutation.mutate({
+      id: paymentId,
+      data: { status: "paid" as PaymentStatus },
     });
-
-  const getStatusColor = (status: PaymentStatus) => {
-    switch (status) {
-      case "paid":
-        return "bg-green-100 text-green-800";
-      case "overdue":
-        return "bg-red-100 text-red-800";
-      case "pending":
-        return "bg-amber-100 text-amber-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
   };
 
-  const getStatusText = (status: PaymentStatus) => {
-    switch (status) {
-      case "paid":
-        return "Pago";
-      case "overdue":
-        return "Em atraso";
-      case "pending":
-        return "Pendente";
-      default:
-        return status;
-    }
-  };
-
-  const pendingCount = payments.filter((p) => p.status === "pending").length;
-  const overdueCount = payments.filter((p) => p.status === "overdue").length;
-  const paidCount = payments.filter((p) => p.status === "paid").length;
+  if (paymentsLoading) {
+    return <div className="flex h-64 items-center justify-center">Carregando...</div>;
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <h1 className="text-2xl font-bold">Pagamentos</h1>
-        <Dialog open={isAddPaymentOpen} onOpenChange={setIsAddPaymentOpen}>
-          <DialogTrigger asChild>
-            <Button className="shrink-0">
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Pagamento
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
-              <DialogTitle>Novo Pagamento</DialogTitle>
-              <DialogDescription>
-                Crie um novo registro de pagamento para um inquilino.
-              </DialogDescription>
-            </DialogHeader>
-
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="tenantId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Inquilino</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um inquilino" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {tenants.map((tenant) => (
-                            <SelectItem key={tenant.id} value={tenant.id}>
-                              {tenant.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="propertyId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Imóvel</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um imóvel" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {properties.map((property) => (
-                            <SelectItem key={property.id} value={property.id}>
-                              {property.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valor (R$)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="dueDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Vencimento</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Descrição</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <DialogFooter className="mt-6">
-                  <Button variant="outline" type="button" onClick={() => setIsAddPaymentOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={addPaymentMutation.isPending}>
-                    {addPaymentMutation.isPending ? "Criando..." : "Criar Pagamento"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Pagamentos</h1>
+        <Button onClick={() => setShowForm(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Novo Pagamento
+        </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-amber-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pagamentos Pendentes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold">{pendingCount}</div>
-              <div className="rounded-full bg-amber-100 p-2 text-amber-600">
-                <Calendar className="h-5 w-5" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-red-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pagamentos em Atraso</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold text-red-600">{overdueCount}</div>
-              <div className="rounded-full bg-red-100 p-2 text-red-600">
-                <Calendar className="h-5 w-5" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-green-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pagamentos Realizados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold text-green-600">{paidCount}</div>
-              <div className="rounded-full bg-green-100 p-2 text-green-600">
-                <CreditCard className="h-5 w-5" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Search and Filter Bar */}
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
+          <Input
+            placeholder="Buscar pagamentos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-48">
+            <Filter className="mr-2 h-4 w-4" />
+            <SelectValue placeholder="Filtrar por status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="pending">Pendente</SelectItem>
+            <SelectItem value="paid">Pago</SelectItem>
+            <SelectItem value="overdue">Atrasado</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div className="p-6">
-          <Tabs defaultValue="all" className="w-full">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <TabsList>
-                <TabsTrigger value="all" onClick={() => setStatusFilter("all")}>
-                  Todos
-                </TabsTrigger>
-                <TabsTrigger value="pending" onClick={() => setStatusFilter("pending")}>
-                  Pendentes
-                </TabsTrigger>
-                <TabsTrigger value="overdue" onClick={() => setStatusFilter("overdue")}>
-                  Em Atraso
-                </TabsTrigger>
-                <TabsTrigger value="paid" onClick={() => setStatusFilter("paid")}>
-                  Pagos
-                </TabsTrigger>
-              </TabsList>
-
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 sm:w-64">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      {/* Payment Form */}
+      {showForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Novo Pagamento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="description">Descrição</Label>
                   <Input
-                    placeholder="Buscar pagamentos..."
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    id="description"
+                    name="description"
+                    placeholder="Ex: Aluguel Janeiro 2024"
+                    required
                   />
                 </div>
+                <div>
+                  <Label htmlFor="amount">Valor</Label>
+                  <Input
+                    id="amount"
+                    name="amount"
+                    type="number"
+                    step="0.01"
+                    placeholder="0,00"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="dueDate">Data de Vencimento</Label>
+                  <Input
+                    id="dueDate"
+                    name="dueDate"
+                    type="date"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tenantId">Inquilino</Label>
+                  <Select name="tenantId" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um inquilino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tenants.map((tenant) => (
+                        <SelectItem key={tenant.id} value={tenant.id}>
+                          {tenant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="md:col-span-1">
+                  <Label htmlFor="propertyId">Imóvel</Label>
+                  <Select name="propertyId" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um imóvel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {properties.map((property) => (
+                        <SelectItem key={property.id} value={property.id}>
+                          {property.address}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={addMutation.isPending}>
+                  {addMutation.isPending ? "Criando..." : "Criar Pagamento"}
+                </Button>
                 <Button
+                  type="button"
                   variant="outline"
-                  size="icon"
-                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                  onClick={() => setShowForm(false)}
                 >
-                  <ArrowUpDown className="h-4 w-4" />
+                  Cancelar
                 </Button>
               </div>
-            </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
-            <TabsContent value="all" className="mt-4">
-              <PaymentList
-                payments={filteredPayments}
-                tenants={tenants}
-                properties={properties}
-                getStatusColor={getStatusColor}
-                getStatusText={getStatusText}
-                onMarkAsPaid={handleMarkAsPaid}
-              />
-            </TabsContent>
-            <TabsContent value="pending" className="mt-4">
-              <PaymentList
-                payments={filteredPayments.filter((p) => p.status === "pending")}
-                tenants={tenants}
-                properties={properties}
-                getStatusColor={getStatusColor}
-                getStatusText={getStatusText}
-                onMarkAsPaid={handleMarkAsPaid}
-              />
-            </TabsContent>
-            <TabsContent value="overdue" className="mt-4">
-              <PaymentList
-                payments={filteredPayments.filter((p) => p.status === "overdue")}
-                tenants={tenants}
-                properties={properties}
-                getStatusColor={getStatusColor}
-                getStatusText={getStatusText}
-                onMarkAsPaid={handleMarkAsPaid}
-              />
-            </TabsContent>
-            <TabsContent value="paid" className="mt-4">
-              <PaymentList
-                payments={filteredPayments.filter((p) => p.status === "paid")}
-                tenants={tenants}
-                properties={properties}
-                getStatusColor={getStatusColor}
-                getStatusText={getStatusText}
-                onMarkAsPaid={handleMarkAsPaid}
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-interface PaymentListProps {
-  payments: Payment[];
-  tenants: any[];
-  properties: any[];
-  getStatusColor: (status: PaymentStatus) => string;
-  getStatusText: (status: PaymentStatus) => string;
-  onMarkAsPaid: (paymentId: string) => void;
-}
-
-const PaymentList: React.FC<PaymentListProps> = ({
-  payments,
-  tenants,
-  properties,
-  getStatusColor,
-  getStatusText,
-  onMarkAsPaid
-}) => {
-  if (payments.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
-        <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
-        <h3 className="mb-2 text-lg font-medium">Nenhum pagamento encontrado</h3>
-        <p className="text-sm text-muted-foreground">
-          Não há pagamentos correspondentes aos filtros selecionados.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {payments.map((payment) => {
-        const tenant = tenants.find((t) => t.id === payment.tenantId);
-        const property = properties.find((p) => p.id === payment.propertyId);
-
-        return (
-          <div
-            key={payment.id}
-            className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
-          >
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <p className="font-medium">{payment.description}</p>
-                <div className="mt-1 flex items-center gap-1">
-                  <p className="text-sm text-muted-foreground">
-                    Inquilino:{" "}
-                    <Link
-                      to={`/inquilinos/${tenant?.id}`}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {tenant?.name || "Desconhecido"}
-                    </Link>
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <p className="text-sm text-muted-foreground">
-                    Imóvel:{" "}
-                    <Link
-                      to={`/imoveis/${property?.id}`}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {property?.name || "Desconhecido"}
-                    </Link>
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex flex-col">
-                  <p className="text-sm text-muted-foreground">
-                    Data de vencimento:
-                  </p>
-                  <p className="font-medium">{new Date(payment.dueDate).toLocaleDateString("pt-BR")}</p>
-                </div>
-                {payment.paidDate && (
-                  <div className="mt-1 flex flex-col">
+      {/* Payments List */}
+      <div className="grid gap-4">
+        {filteredPayments.map((payment) => {
+          const tenant = tenants.find((t) => t.id === payment.tenantId);
+          const property = properties.find((p) => p.id === payment.propertyId);
+          
+          return (
+            <Card key={payment.id}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{payment.description}</h3>
+                      {getStatusBadge(payment.status)}
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Data de pagamento:
+                      Inquilino: {tenant?.name} • Imóvel: {property?.address}
                     </p>
-                    <p className="font-medium">{new Date(payment.paidDate).toLocaleDateString("pt-BR")}</p>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        Vence: {format(new Date(payment.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                      </span>
+                      {payment.paidDate && (
+                        <span className="flex items-center gap-1">
+                          <Check className="h-4 w-4" />
+                          Pago: {format(new Date(payment.paidDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between md:justify-end">
-                <div className="flex flex-col items-end">
-                  <p className="text-lg font-bold">
-                    R$ {payment.amount.toLocaleString("pt-BR")}
-                  </p>
-                  <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-xs ${getStatusColor(
-                      payment.status
-                    )}`}
-                  >
-                    {getStatusText(payment.status)}
-                  </span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-lg font-semibold">
+                      R$ {payment.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </span>
+                    {payment.status === "pending" && (
+                      <Button
+                        size="sm"
+                        onClick={() => markAsPaid(payment.id)}
+                        disabled={updateMutation.isPending}
+                      >
+                        Marcar como Pago
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="ml-4">
-                  {payment.status !== "paid" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onMarkAsPaid(payment.id)}
-                    >
-                      <Check className="mr-1 h-3 w-3" />
-                      Marcar como Pago
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+              </CardContent>
+            </Card>
+          );
+        })}
+        
+        {filteredPayments.length === 0 && (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <p className="text-muted-foreground">
+                {searchTerm || statusFilter !== "all" 
+                  ? "Nenhum pagamento encontrado com os filtros aplicados."
+                  : "Nenhum pagamento cadastrado ainda."}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };

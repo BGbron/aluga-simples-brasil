@@ -7,15 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Building } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const [activeTab, setActiveTab] = useState("login");
+  const { login, signup, isAuthenticated } = useAuth();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -25,11 +27,33 @@ const Login = () => {
         title: "Login realizado com sucesso",
         description: "Bem-vindo ao Aluga Simples!",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Falha no login",
-        description: "Email ou senha incorretos. Tente novamente.",
+        description: error.message || "Email ou senha incorretos. Tente novamente.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await signup(email, password);
+      toast({
+        title: "Conta criada com sucesso",
+        description: "Verifique seu email para confirmar a conta.",
+      });
+      setActiveTab("login");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Falha no cadastro",
+        description: error.message || "Erro ao criar conta. Tente novamente.",
       });
     } finally {
       setIsLoading(false);
@@ -56,45 +80,88 @@ const Login = () => {
         </p>
 
         <div className="mt-8 rounded-lg bg-white px-6 py-8 shadow sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                required
-                className="mt-1"
-              />
-            </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Entrar</TabsTrigger>
+              <TabsTrigger value="signup">Cadastrar-se</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="login" className="space-y-6 mt-6">
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div>
+                  <Label htmlFor="login-email">Email</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    required
+                    className="mt-1"
+                  />
+                </div>
 
-            <div>
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="mt-1"
-              />
-            </div>
+                <div>
+                  <Label htmlFor="login-password">Senha</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="mt-1"
+                  />
+                </div>
 
-            <div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Entrando..." : "Entrar"}
-              </Button>
-            </div>
-          </form>
+                <div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Entrando..." : "Entrar"}
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="signup" className="space-y-6 mt-6">
+              <form onSubmit={handleSignup} className="space-y-6">
+                <div>
+                  <Label htmlFor="signup-email">Email</Label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    required
+                    className="mt-1"
+                  />
+                </div>
 
-          <div className="mt-4 text-center text-sm text-gray-500">
-            <p>
-              Para demonstração, use qualquer email e senha.
-            </p>
-          </div>
+                <div>
+                  <Label htmlFor="signup-password">Senha</Label>
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="mt-1"
+                    minLength={6}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Mínimo de 6 caracteres
+                  </p>
+                </div>
+
+                <div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Criando conta..." : "Cadastrar-se"}
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

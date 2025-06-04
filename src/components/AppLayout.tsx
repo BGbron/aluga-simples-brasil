@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Home, Building, Users, Calendar, Menu, X, LogOut } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -11,10 +12,27 @@ interface AppLayoutProps {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const { toast } = useToast();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao sair",
+        description: error.message || "Erro ao fazer logout.",
+      });
+    }
+  };
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: Home },
@@ -78,17 +96,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           <div className="border-t border-sidebar-accent/30 p-4">
             <div className="mb-2 flex items-center">
               <div className="h-8 w-8 rounded-full bg-sidebar-accent/50 text-center leading-8">
-                {user?.name?.charAt(0) || "U"}
+                {user?.email?.charAt(0).toUpperCase() || "U"}
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium">{user?.name}</p>
-                <p className="text-xs text-white/70">{user?.email}</p>
+                <p className="text-sm font-medium">{user?.email}</p>
+                <p className="text-xs text-white/70">Usuário autenticado</p>
               </div>
             </div>
             <Button
               variant="ghost"
               className="mt-2 w-full justify-start text-white/80 hover:bg-sidebar-accent/70 hover:text-white"
-              onClick={logout}
+              onClick={handleLogout}
             >
               <LogOut className="mr-2 h-4 w-4" />
               Sair
