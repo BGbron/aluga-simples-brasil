@@ -1,15 +1,29 @@
-
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, Edit, Trash, Building, Calendar, Mail, Phone, CreditCard } from "lucide-react";
-import { getTenant, getProperty, getPaymentsForTenant } from "@/lib/mockData";
+import { getTenant, getProperty, getPaymentsForTenant, deleteTenant } from "@/lib/mockData";
+import { toast } from "@/components/ui/sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import EditTenantDialog from "@/components/EditTenantDialog";
 
 const TenantDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const { data: tenant, isLoading: isTenantLoading } = useQuery({
     queryKey: ["tenant", id],
@@ -28,6 +42,26 @@ const TenantDetails = () => {
     queryFn: () => getPaymentsForTenant(id as string),
     enabled: !!id,
   });
+
+  const deleteTenantMutation = useMutation({
+    mutationFn: () => deleteTenant(id as string),
+    onSuccess: () => {
+      toast("Inquilino excluído", {
+        description: "O inquilino foi excluído com sucesso."
+      });
+      queryClient.invalidateQueries({ queryKey: ["tenants"] });
+      navigate("/inquilinos");
+    },
+    onError: () => {
+      toast("Erro", {
+        description: "Não foi possível excluir o inquilino. Tente novamente."
+      });
+    },
+  });
+
+  const handleDeleteTenant = () => {
+    deleteTenantMutation.mutate();
+  };
 
   if (isTenantLoading) {
     return <div className="flex justify-center py-8">Carregando...</div>;
@@ -51,14 +85,32 @@ const TenantDetails = () => {
           <h1 className="text-2xl font-bold">{tenant.name}</h1>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
             <Edit className="mr-2 h-4 w-4" />
             Editar
           </Button>
-          <Button variant="outline" size="sm" className="text-destructive">
-            <Trash className="mr-2 h-4 w-4" />
-            Excluir
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="text-destructive">
+                <Trash className="mr-2 h-4 w-4" />
+                Excluir
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir Inquilino</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir o inquilino {tenant.name}? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteTenant} className="bg-destructive hover:bg-destructive/90">
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -246,6 +298,16 @@ const TenantDetails = () => {
           </div>
         </div>
       </div>
+
+      <EditTenantDialog
+        tenant={tenant}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["tenant", id] });
+          queryClient.invalidateQueries({ queryKey: ["tenants"] });
+        }}
+      />
     </div>
   );
 };

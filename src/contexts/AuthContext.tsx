@@ -50,8 +50,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) {
       throw new Error(error.message);
     }
-    
-    return data;
   };
 
   const signup = async (email: string, password: string) => {
@@ -68,8 +66,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) {
       throw new Error(error.message);
     }
-    
-    return data;
   };
 
   const logout = async () => {
