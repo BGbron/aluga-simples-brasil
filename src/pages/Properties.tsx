@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -33,7 +34,9 @@ const Properties = () => {
     bedrooms: 1,
     bathrooms: 1,
     area: 0,
-    status: "available"
+    status: "available",
+    rentAmount: 0,
+    dueDay: 5
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -141,6 +144,8 @@ const Properties = () => {
       bathrooms: newProperty.bathrooms || 0,
       area: newProperty.area || 0,
       status: "available" as const,
+      rentAmount: newProperty.rentAmount || 0,
+      dueDay: newProperty.dueDay || 5,
     };
     
     addPropertyMutation.mutate(propertyToAdd);
@@ -283,6 +288,34 @@ const Properties = () => {
                     min="0"
                     value={newProperty.area}
                     onChange={handleNumberInputChange}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="rentAmount">Valor do Aluguel (R$)</Label>
+                  <Input
+                    id="rentAmount"
+                    name="rentAmount"
+                    type="number"
+                    min="0"
+                    value={newProperty.rentAmount}
+                    onChange={handleNumberInputChange}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dueDay">Dia de Vencimento</Label>
+                  <Input
+                    id="dueDay"
+                    name="dueDay"
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={newProperty.dueDay}
+                    onChange={handleNumberInputChange}
+                    placeholder="5"
                   />
                 </div>
               </div>

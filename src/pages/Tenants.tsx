@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,8 +46,6 @@ const tenantFormSchema = z.object({
   propertyId: z.string().min(1, { message: "Selecione um imóvel" }),
   startDate: z.string().min(1, { message: "Data de início inválida" }),
   endDate: z.string().min(1, { message: "Data de término inválida" }),
-  rentAmount: z.string().min(1, { message: "Valor do aluguel inválido" }),
-  dueDay: z.string().min(1, { message: "Dia de vencimento inválido" }),
 });
 
 const Tenants = () => {
@@ -74,8 +73,6 @@ const Tenants = () => {
         propertyId: data.propertyId,
         startDate: data.startDate,
         endDate: data.endDate,
-        rentAmount: Number(data.rentAmount),
-        dueDay: Number(data.dueDay),
       });
     },
     onSuccess: () => {
@@ -103,8 +100,6 @@ const Tenants = () => {
       propertyId: "",
       startDate: new Date().toISOString().split("T")[0],
       endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
-      rentAmount: "",
-      dueDay: "10",
     },
   });
 
@@ -122,6 +117,16 @@ const Tenants = () => {
   const getPropertyName = (propertyId: string) => {
     const property = properties.find((p) => p.id === propertyId);
     return property ? property.name : "Sem imóvel";
+  };
+
+  const getPropertyRent = (propertyId: string) => {
+    const property = properties.find((p) => p.id === propertyId);
+    return property ? property.rentAmount : 0;
+  };
+
+  const getPropertyDueDay = (propertyId: string) => {
+    const property = properties.find((p) => p.id === propertyId);
+    return property ? property.dueDay : 5;
   };
 
   const availableProperties = properties.filter(p => p.status === "available");
@@ -215,7 +220,7 @@ const Tenants = () => {
                             {availableProperties.length > 0 ? (
                               availableProperties.map((property) => (
                                 <SelectItem key={property.id} value={property.id}>
-                                  {property.name}
+                                  {property.name} - R$ {property.rentAmount.toLocaleString("pt-BR")}
                                 </SelectItem>
                               ))
                             ) : (
@@ -225,19 +230,6 @@ const Tenants = () => {
                             )}
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="rentAmount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor do Aluguel</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="0,00" {...field} />
-                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -263,19 +255,6 @@ const Tenants = () => {
                         <FormLabel>Data de Término</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="dueDay"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Dia de Vencimento</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="1" max="31" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -345,11 +324,11 @@ const Tenants = () => {
                         <div className="flex justify-between text-sm">
                           <span className="flex items-center">
                             <span className="mr-1 text-muted-foreground">Aluguel:</span>
-                            <span className="font-medium">R$ {tenant.rentAmount.toLocaleString("pt-BR")}</span>
+                            <span className="font-medium">R$ {getPropertyRent(tenant.propertyId).toLocaleString("pt-BR")}</span>
                           </span>
                           <span className="flex items-center">
                             <span className="mr-1 text-muted-foreground">Vencimento:</span>
-                            <span className="font-medium">Dia {tenant.dueDay}</span>
+                            <span className="font-medium">Dia {getPropertyDueDay(tenant.propertyId)}</span>
                           </span>
                         </div>
                       </div>
