@@ -137,6 +137,42 @@ export const addTenant = (tenant: Omit<Tenant, "id">): Promise<Tenant> => {
   });
 };
 
+export const updateTenant = (id: string, data: Partial<Tenant>): Promise<Tenant> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const index = mockTenants.findIndex(t => t.id === id);
+      if (index !== -1) {
+        mockTenants[index] = { ...mockTenants[index], ...data };
+        
+        // Save to localStorage
+        saveLocalData('tenants', mockTenants);
+        
+        resolve(mockTenants[index]);
+      } else {
+        reject(new Error("Inquilino não encontrado"));
+      }
+    }, 300);
+  });
+};
+
+export const deleteTenant = (id: string): Promise<boolean> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const index = mockTenants.findIndex(t => t.id === id);
+      if (index !== -1) {
+        mockTenants.splice(index, 1);
+        
+        // Save to localStorage
+        saveLocalData('tenants', mockTenants);
+        
+        resolve(true);
+      } else {
+        reject(new Error("Inquilino não encontrado"));
+      }
+    }, 300);
+  });
+};
+
 export const updateProperty = (id: string, data: Partial<Property>): Promise<Property> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
