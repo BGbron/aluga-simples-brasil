@@ -41,8 +41,6 @@ const editTenantFormSchema = z.object({
   propertyId: z.string().min(1, { message: "Selecione um imóvel" }),
   startDate: z.string().min(1, { message: "Data de início inválida" }),
   endDate: z.string().min(1, { message: "Data de término inválida" }),
-  rentAmount: z.string().min(1, { message: "Valor do aluguel inválido" }),
-  dueDay: z.string().min(1, { message: "Dia de vencimento inválido" }),
 });
 
 interface EditTenantDialogProps {
@@ -73,8 +71,6 @@ const EditTenantDialog: React.FC<EditTenantDialogProps> = ({
         propertyId: data.propertyId,
         startDate: data.startDate,
         endDate: data.endDate,
-        rentAmount: Number(data.rentAmount),
-        dueDay: Number(data.dueDay),
       });
     },
     onSuccess: () => {
@@ -101,8 +97,6 @@ const EditTenantDialog: React.FC<EditTenantDialogProps> = ({
       propertyId: tenant.propertyId,
       startDate: tenant.startDate,
       endDate: tenant.endDate,
-      rentAmount: tenant.rentAmount.toString(),
-      dueDay: tenant.dueDay.toString(),
     },
   });
 
@@ -210,19 +204,6 @@ const EditTenantDialog: React.FC<EditTenantDialogProps> = ({
               />
               <FormField
                 control={form.control}
-                name="rentAmount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Valor do Aluguel</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0,00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="startDate"
                 render={({ field }) => (
                   <FormItem>
@@ -242,19 +223,6 @@ const EditTenantDialog: React.FC<EditTenantDialogProps> = ({
                     <FormLabel>Data de Término</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="dueDay"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dia de Vencimento</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="1" max="31" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

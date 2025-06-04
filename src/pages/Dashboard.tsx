@@ -28,7 +28,10 @@ const Dashboard = () => {
   const overduePayments = payments.filter((p) => p.status === "overdue");
   const paidPayments = payments.filter((p) => p.status === "paid");
 
-  const totalRentValue = tenants.reduce((total, tenant) => total + tenant.rentAmount, 0);
+  // Calculate total rent from occupied properties
+  const totalRentValue = properties
+    .filter(property => property.status === "occupied")
+    .reduce((total, property) => total + property.rentAmount, 0);
   
   return (
     <div className="space-y-6">

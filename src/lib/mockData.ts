@@ -22,6 +22,42 @@ let mockProperties: Property[] = getLocalData<Property>('properties', initialPro
 let mockTenants: Tenant[] = getLocalData<Tenant>('tenants', initialTenants);
 let paymentCache: Payment[] = getLocalData<Payment>('payments', initialPayments);
 
+// Migrate existing data to new structure
+const migrateData = () => {
+  let needsSave = false;
+  
+  // Migrate properties - add default rentAmount and dueDay if missing
+  mockProperties = mockProperties.map(property => {
+    if (!property.hasOwnProperty('rentAmount')) {
+      needsSave = true;
+      return {
+        ...property,
+        rentAmount: 0,
+        dueDay: 5
+      };
+    }
+    return property;
+  });
+
+  // Update property status based on tenant assignment
+  mockProperties = mockProperties.map(property => {
+    const hasTenant = mockTenants.some(tenant => tenant.propertyId === property.id);
+    const newStatus = hasTenant ? 'occupied' : 'available';
+    if (property.status !== newStatus) {
+      needsSave = true;
+      return { ...property, status: newStatus };
+    }
+    return property;
+  });
+
+  if (needsSave) {
+    saveLocalData('properties', mockProperties);
+  }
+};
+
+// Run migration on load
+migrateData();
+
 // Helper functions to simulate API calls
 export const getProperties = (): Promise<Property[]> => {
   return new Promise((resolve) => {
@@ -37,35 +73,27 @@ export const getTenants = (): Promise<Tenant[]> => {
 
 export const getPayments = (): Promise<Payment[]> => {
   return new Promise((resolve) => {
-    // Simular a recuperação dos dados do cache
     setTimeout(() => resolve([...paymentCache]), 500);
   });
 };
 
-// Adiciona um novo pagamento
 export const addPayment = (data: Omit<Payment, "id" | "paidDate">): Promise<Payment> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      // Criar novo pagamento
       const newPayment: Payment = {
         ...data,
         id: `pay${paymentCache.length + 1}`,
         status: data.status || "pending",
       };
 
-      // Verificar se a data de vencimento já passou
       const dueDate = new Date(newPayment.dueDate);
       const today = new Date();
       if (dueDate < today && newPayment.status === "pending") {
         newPayment.status = "overdue";
       }
 
-      // Adicionar ao cache
       paymentCache.push(newPayment);
-      
-      // Salvar no localStorage
       saveLocalData('payments', paymentCache);
-      
       resolve(newPayment);
     }, 500);
   });
@@ -74,20 +102,15 @@ export const addPayment = (data: Omit<Payment, "id" | "paidDate">): Promise<Paym
 export const updatePayment = (id: string, data: Partial<Payment>): Promise<Payment> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      // Encontrar o pagamento no cache
       const index = paymentCache.findIndex(p => p.id === id);
       if (index !== -1) {
-        // Atualizar o pagamento
         paymentCache[index] = { ...paymentCache[index], ...data };
         
-        // Se estiver marcando como pago, adicionar a data de pagamento
         if (data.status === "paid" && !paymentCache[index].paidDate) {
           paymentCache[index].paidDate = new Date().toISOString().split('T')[0];
         }
         
-        // Save to localStorage
         saveLocalData('payments', paymentCache);
-        
         resolve(paymentCache[index]);
       } else {
         reject(new Error("Pagamento não encontrado"));
@@ -129,9 +152,15 @@ export const addTenant = (tenant: Omit<Tenant, "id">): Promise<Tenant> => {
       };
       mockTenants.push(newTenant);
       
-      // Save to localStorage
-      saveLocalData('tenants', mockTenants);
+      // Update property status to occupied
+      const propertyIndex = mockProperties.findIndex(p => p.id === tenant.propertyId);
+      if (propertyIndex !== -1) {
+        mockProperties[propertyIndex].status = 'occupied';
+        mockProperties[propertyIndex].tenantId = newTenant.id;
+        saveLocalData('properties', mockProperties);
+      }
       
+      saveLocalData('tenants', mockTenants);
       resolve(newTenant);
     }, 500);
   });
@@ -142,11 +171,29 @@ export const updateTenant = (id: string, data: Partial<Tenant>): Promise<Tenant>
     setTimeout(() => {
       const index = mockTenants.findIndex(t => t.id === id);
       if (index !== -1) {
+        const oldTenant = mockTenants[index];
         mockTenants[index] = { ...mockTenants[index], ...data };
         
-        // Save to localStorage
-        saveLocalData('tenants', mockTenants);
+        // If property changed, update old and new property status
+        if (data.propertyId && data.propertyId !== oldTenant.propertyId) {
+          // Mark old property as available
+          const oldPropertyIndex = mockProperties.findIndex(p => p.id === oldTenant.propertyId);
+          if (oldPropertyIndex !== -1) {
+            mockProperties[oldPropertyIndex].status = 'available';
+            mockProperties[oldPropertyIndex].tenantId = undefined;
+          }
+          
+          // Mark new property as occupied
+          const newPropertyIndex = mockProperties.findIndex(p => p.id === data.propertyId);
+          if (newPropertyIndex !== -1) {
+            mockProperties[newPropertyIndex].status = 'occupied';
+            mockProperties[newPropertyIndex].tenantId = id;
+          }
+          
+          saveLocalData('properties', mockProperties);
+        }
         
+        saveLocalData('tenants', mockTenants);
         resolve(mockTenants[index]);
       } else {
         reject(new Error("Inquilino não encontrado"));
@@ -160,11 +207,18 @@ export const deleteTenant = (id: string): Promise<boolean> => {
     setTimeout(() => {
       const index = mockTenants.findIndex(t => t.id === id);
       if (index !== -1) {
+        const tenant = mockTenants[index];
         mockTenants.splice(index, 1);
         
-        // Save to localStorage
-        saveLocalData('tenants', mockTenants);
+        // Update property status to available
+        const propertyIndex = mockProperties.findIndex(p => p.id === tenant.propertyId);
+        if (propertyIndex !== -1) {
+          mockProperties[propertyIndex].status = 'available';
+          mockProperties[propertyIndex].tenantId = undefined;
+          saveLocalData('properties', mockProperties);
+        }
         
+        saveLocalData('tenants', mockTenants);
         resolve(true);
       } else {
         reject(new Error("Inquilino não encontrado"));
@@ -179,10 +233,7 @@ export const updateProperty = (id: string, data: Partial<Property>): Promise<Pro
       const index = mockProperties.findIndex(p => p.id === id);
       if (index !== -1) {
         mockProperties[index] = { ...mockProperties[index], ...data };
-        
-        // Save to localStorage
         saveLocalData('properties', mockProperties);
-        
         resolve(mockProperties[index]);
       } else {
         reject(new Error("Imóvel não encontrado"));
@@ -197,10 +248,7 @@ export const deleteProperty = (id: string): Promise<boolean> => {
       const index = mockProperties.findIndex(p => p.id === id);
       if (index !== -1) {
         mockProperties.splice(index, 1);
-        
-        // Save to localStorage
         saveLocalData('properties', mockProperties);
-        
         resolve(true);
       } else {
         reject(new Error("Imóvel não encontrado"));
@@ -212,17 +260,16 @@ export const deleteProperty = (id: string): Promise<boolean> => {
 export const addProperty = (property: Omit<Property, "id">): Promise<Property> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      // No longer assign default images - let the icon display instead
       const newProperty: Property = {
         ...property,
         id: `p${mockProperties.length + 1}`,
+        status: property.status || 'available',
+        rentAmount: property.rentAmount || 0,
+        dueDay: property.dueDay || 5,
       };
       
       mockProperties.push(newProperty);
-      
-      // Save to localStorage
       saveLocalData('properties', mockProperties);
-      
       resolve(newProperty);
     }, 500);
   });

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -50,6 +51,7 @@ const TenantDetails = () => {
         description: "O inquilino foi excluído com sucesso."
       });
       queryClient.invalidateQueries({ queryKey: ["tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
       navigate("/inquilinos");
     },
     onError: () => {
@@ -166,15 +168,17 @@ const TenantDetails = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Valor do Aluguel</p>
-                      <p className="text-sm text-muted-foreground">
-                        R$ {tenant.rentAmount.toLocaleString("pt-BR")} (vencimento dia {tenant.dueDay})
-                      </p>
+                  {property && (
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Valor do Aluguel</p>
+                        <p className="text-sm text-muted-foreground">
+                          R$ {property.rentAmount.toLocaleString("pt-BR")} (vencimento dia {property.dueDay})
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -306,6 +310,7 @@ const TenantDetails = () => {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["tenant", id] });
           queryClient.invalidateQueries({ queryKey: ["tenants"] });
+          queryClient.invalidateQueries({ queryKey: ["properties"] });
         }}
       />
     </div>

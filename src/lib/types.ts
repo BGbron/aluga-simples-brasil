@@ -13,6 +13,8 @@ export interface Property {
   imageUrl?: string;
   tenantId?: string;
   status: 'available' | 'occupied';
+  rentAmount: number;
+  dueDay: number;
 }
 
 export interface Tenant {
@@ -24,8 +26,6 @@ export interface Tenant {
   startDate: string;
   endDate: string;
   propertyId: string;
-  rentAmount: number;
-  dueDay: number;
 }
 
 export interface Payment {
