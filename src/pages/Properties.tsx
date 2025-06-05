@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Property } from "@/lib/types";
 import { getProperties } from "@/lib/mockData";
 import { Building, Plus, MapPin, Bed, Bath, Square, Crown, RefreshCw } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import UpgradeDialog from "@/components/UpgradeDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ const Properties = () => {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const { subscriptionData, checkSubscription, isCheckingSubscription } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const { data: properties = [] } = useQuery({
     queryKey: ["properties"],
@@ -53,11 +54,11 @@ const Properties = () => {
       return;
     }
     
-    // If subscribed or under limit, allow adding property
-    // Here you would navigate to add property page or open a dialog
+    // If subscribed or under limit, redirect to add property page
+    // For now, we'll show a different message since the add property page doesn't exist yet
     toast({
-      title: "Adicionar Imóvel",
-      description: "Funcionalidade de adicionar imóvel será implementada em breve.",
+      title: "Funcionalidade em desenvolvimento",
+      description: "A página de adicionar imóvel ainda não foi criada. Você pode adicionar esta funcionalidade.",
     });
   };
 
