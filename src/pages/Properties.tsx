@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,14 +15,17 @@ import {
 } from "@/components/ui/dialog";
 import { Property } from "@/lib/types";
 import { getProperties, getTenants, addProperty } from "@/lib/mockData";
-import { Building, Plus, Search, Home, Store } from "lucide-react";
+import { Building, Plus, Search, Home, Store, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Properties = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
+  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
   const [newProperty, setNewProperty] = useState<Partial<Property>>({
     name: "",
     address: "",
@@ -40,6 +42,7 @@ const Properties = () => {
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ["properties"],
@@ -72,10 +75,11 @@ const Properties = () => {
         bedrooms: 1,
         bathrooms: 1,
         area: 0,
-        status: "available"
+        status: "available",
+        rentAmount: 0,
+        dueDay: 5
       });
       
-      // Refresh the properties data
       queryClient.invalidateQueries({ queryKey: ["properties"] });
     },
     onError: () => {
@@ -86,6 +90,37 @@ const Properties = () => {
       });
     },
   });
+
+  // Check if user has reached property limit (2 properties for free tier)
+  const hasReachedLimit = properties.length >= 2;
+
+  const handleAddPropertyClick = () => {
+    if (hasReachedLimit) {
+      setIsUpgradeDialogOpen(true);
+    } else {
+      setIsAddPropertyOpen(true);
+    }
+  };
+
+  const handleUpgradeToSponsored = async () => {
+    try {
+      // TODO: Integrate with Stripe checkout
+      toast({
+        title: "Redirecionando para pagamento",
+        description: "Você será redirecionado para completar a assinatura premium.",
+      });
+      
+      // Placeholder for Stripe integration
+      console.log("Redirecting to Stripe checkout...");
+      setIsUpgradeDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível processar o pagamento. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const filteredProperties = properties.filter(
     (property) =>
@@ -123,7 +158,6 @@ const Properties = () => {
   };
 
   const handleAddProperty = async () => {
-    // Check if required fields are filled
     if (!newProperty.name || !newProperty.address || !newProperty.city) {
       toast({
         title: "Campos obrigatórios",
@@ -132,7 +166,6 @@ const Properties = () => {
       return;
     }
     
-    // Convert the partial property to a complete property minus the ID which will be added by the API
     const propertyToAdd = {
       name: newProperty.name!,
       address: newProperty.address!,
@@ -151,7 +184,6 @@ const Properties = () => {
     addPropertyMutation.mutate(propertyToAdd);
   };
 
-  // Function to get the appropriate icon based on property type
   const getPropertyIcon = (type: string) => {
     switch (type) {
       case "Casa":
@@ -169,14 +201,61 @@ const Properties = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <h1 className="text-2xl font-bold">Imóveis</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Imóveis</h1>
+          <p className="text-sm text-muted-foreground">
+            {properties.length}/2 imóveis cadastrados {hasReachedLimit && "(Limite atingido - Faça upgrade para mais)"}
+          </p>
+        </div>
+        
+        <Button onClick={handleAddPropertyClick} className="shrink-0">
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Imóvel
+        </Button>
+
+        {/* Upgrade Dialog */}
+        <Dialog open={isUpgradeDialogOpen} onOpenChange={setIsUpgradeDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Crown className="h-5 w-5 text-yellow-500" />
+                Upgrade para Premium
+              </DialogTitle>
+              <DialogDescription>
+                Você atingiu o limite de 2 imóveis cadastrados no plano gratuito.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Alert>
+                <Crown className="h-4 w-4" />
+                <AlertTitle>Plano Premium</AlertTitle>
+                <AlertDescription>
+                  Com o plano premium você pode:
+                  <ul className="mt-2 list-disc list-inside space-y-1">
+                    <li>Cadastrar imóveis ilimitados</li>
+                    <li>Relatórios avançados</li>
+                    <li>Suporte prioritário</li>
+                  </ul>
+                  <div className="mt-3 font-semibold">
+                    Apenas R$ 29,90/mês
+                  </div>
+                </AlertDescription>
+              </Alert>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsUpgradeDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpgradeToSponsored} className="bg-yellow-600 hover:bg-yellow-700">
+                <Crown className="mr-2 h-4 w-4" />
+                Assinar Premium
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Property Dialog */}
         <Dialog open={isAddPropertyOpen} onOpenChange={setIsAddPropertyOpen}>
-          <DialogTrigger asChild>
-            <Button className="shrink-0">
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Imóvel
-            </Button>
-          </DialogTrigger>
           <DialogContent className="sm:max-w-[550px]">
             <DialogHeader>
               <DialogTitle>Adicionar Novo Imóvel</DialogTitle>
@@ -342,6 +421,29 @@ const Properties = () => {
         />
       </div>
 
+      {/* Progress bar showing property limit */}
+      {properties.length > 0 && (
+        <div className="rounded-lg border p-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium">Limite de imóveis</span>
+            <span className="text-sm text-muted-foreground">{properties.length}/2</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full transition-all ${
+                hasReachedLimit ? 'bg-red-500' : 'bg-blue-500'
+              }`}
+              style={{ width: `${(properties.length / 2) * 100}%` }}
+            ></div>
+          </div>
+          {hasReachedLimit && (
+            <p className="text-xs text-red-600 mt-2">
+              Limite atingido. Faça upgrade para cadastrar mais imóveis.
+            </p>
+          )}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex justify-center py-8">
           <p>Carregando imóveis...</p>
@@ -419,7 +521,7 @@ const Properties = () => {
               : "Você ainda não tem imóveis cadastrados."}
           </p>
           {!searchTerm && (
-            <Button onClick={() => setIsAddPropertyOpen(true)}>
+            <Button onClick={handleAddPropertyClick}>
               <Plus className="mr-2 h-4 w-4" />
               Adicionar Imóvel
             </Button>
