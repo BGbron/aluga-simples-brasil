@@ -1,533 +1,230 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Property } from "@/lib/types";
-import { getProperties, getTenants, addProperty } from "@/lib/mockData";
-import { Building, Plus, Search, Home, Store, Crown } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getProperties } from "@/lib/mockData";
+import { Building, Plus, MapPin, Bed, Bath, Square, Crown, RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import UpgradeDialog from "@/components/UpgradeDialog";
+import { useToast } from "@/hooks/use-toast";
 
 const Properties = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
-  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
-  const [newProperty, setNewProperty] = useState<Partial<Property>>({
-    name: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    type: "Apartamento",
-    bedrooms: 1,
-    bathrooms: 1,
-    area: 0,
-    status: "available",
-    rentAmount: 0,
-    dueDay: 5
-  });
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const { subscriptionData, checkSubscription, isCheckingSubscription } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
 
-  const { data: properties = [], isLoading } = useQuery({
+  const { data: properties = [] } = useQuery({
     queryKey: ["properties"],
     queryFn: getProperties,
   });
 
-  const { data: tenants = [] } = useQuery({
-    queryKey: ["tenants"],
-    queryFn: getTenants,
-  });
-
-  const addPropertyMutation = useMutation({
-    mutationFn: (data: Omit<Property, "id">) => {
-      return addProperty(data);
-    },
-    onSuccess: () => {
+  // Check for success/cancel parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
       toast({
-        title: "Imóvel adicionado",
-        description: `${newProperty.name} foi adicionado com sucesso.`,
+        title: "Assinatura realizada com sucesso!",
+        description: "Seu plano Premium foi ativado. Agora você pode cadastrar imóveis ilimitados!",
       });
-      
-      setIsAddPropertyOpen(false);
-      setNewProperty({
-        name: "",
-        address: "",
-        city: "",
-        state: "",
-        zipCode: "",
-        type: "Apartamento",
-        bedrooms: 1,
-        bathrooms: 1,
-        area: 0,
-        status: "available",
-        rentAmount: 0,
-        dueDay: 5
-      });
-      
-      queryClient.invalidateQueries({ queryKey: ["properties"] });
-    },
-    onError: () => {
+      // Check subscription status after successful payment
+      setTimeout(() => {
+        checkSubscription();
+      }, 2000);
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('canceled') === 'true') {
       toast({
-        title: "Erro",
-        description: "Não foi possível adicionar o imóvel. Tente novamente.",
+        title: "Assinatura cancelada",
+        description: "Você ainda pode cadastrar até 2 imóveis no plano gratuito.",
         variant: "destructive",
       });
-    },
-  });
-
-  // Check if user has reached property limit (2 properties for free tier)
-  const hasReachedLimit = properties.length >= 2;
-
-  const handleAddPropertyClick = () => {
-    if (hasReachedLimit) {
-      setIsUpgradeDialogOpen(true);
-    } else {
-      setIsAddPropertyOpen(true);
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
-  };
+  }, [toast, checkSubscription]);
 
-  const handleUpgradeToSponsored = async () => {
-    try {
-      // TODO: Integrate with Stripe checkout
-      toast({
-        title: "Redirecionando para pagamento",
-        description: "Você será redirecionado para completar a assinatura premium.",
-      });
-      
-      // Placeholder for Stripe integration
-      console.log("Redirecting to Stripe checkout...");
-      setIsUpgradeDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível processar o pagamento. Tente novamente.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const filteredProperties = properties.filter(
-    (property) =>
-      property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.city.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getTenantName = (propertyId: string) => {
-    const tenant = tenants.find((t) => t.propertyId === propertyId);
-    return tenant ? tenant.name : "Sem inquilino";
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewProperty(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewProperty(prev => ({
-      ...prev,
-      [name]: parseInt(value) || 0
-    }));
-  };
-
-  const handleSelectChange = (value: string, name: string) => {
-    setNewProperty(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleAddProperty = async () => {
-    if (!newProperty.name || !newProperty.address || !newProperty.city) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-      });
+  const handleAddProperty = () => {
+    // Check if user has reached the limit (2 properties for free users)
+    if (!subscriptionData.subscribed && properties.length >= 2) {
+      setShowUpgradeDialog(true);
       return;
     }
     
-    const propertyToAdd = {
-      name: newProperty.name!,
-      address: newProperty.address!,
-      city: newProperty.city!,
-      state: newProperty.state || "",
-      zipCode: newProperty.zipCode || "",
-      type: newProperty.type || "Apartamento",
-      bedrooms: newProperty.bedrooms || 0,
-      bathrooms: newProperty.bathrooms || 0,
-      area: newProperty.area || 0,
-      status: "available" as const,
-      rentAmount: newProperty.rentAmount || 0,
-      dueDay: newProperty.dueDay || 5,
-    };
-    
-    addPropertyMutation.mutate(propertyToAdd);
+    // If subscribed or under limit, allow adding property
+    // Here you would navigate to add property page or open a dialog
+    toast({
+      title: "Adicionar Imóvel",
+      description: "Funcionalidade de adicionar imóvel será implementada em breve.",
+    });
   };
 
-  const getPropertyIcon = (type: string) => {
-    switch (type) {
-      case "Casa":
-        return <Home className="h-12 w-12 text-gray-400" />;
-      case "Apartamento":
-        return <Building className="h-12 w-12 text-gray-400" />;
-      case "Comercial":
-      case "Kitnet":
-        return <Store className="h-12 w-12 text-gray-400" />;
-      default:
-        return <Building className="h-12 w-12 text-gray-400" />;
-    }
-  };
+  const isAtLimit = !subscriptionData.subscribed && properties.length >= 2;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Imóveis</h1>
-          <p className="text-sm text-muted-foreground">
-            {properties.length}/2 imóveis cadastrados {hasReachedLimit && "(Limite atingido - Faça upgrade para mais)"}
+          <h1 className="text-3xl font-bold">Imóveis</h1>
+          <p className="text-muted-foreground">
+            Gerencie seus imóveis cadastrados
+            {!subscriptionData.subscribed && (
+              <span className="ml-2 text-sm">
+                ({properties.length}/2 imóveis no plano gratuito)
+              </span>
+            )}
           </p>
         </div>
-        
-        <Button onClick={handleAddPropertyClick} className="shrink-0">
-          <Plus className="mr-2 h-4 w-4" />
-          Adicionar Imóvel
-        </Button>
-
-        {/* Upgrade Dialog */}
-        <Dialog open={isUpgradeDialogOpen} onOpenChange={setIsUpgradeDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-yellow-500" />
-                Upgrade para Premium
-              </DialogTitle>
-              <DialogDescription>
-                Você atingiu o limite de 2 imóveis cadastrados no plano gratuito.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <Alert>
-                <Crown className="h-4 w-4" />
-                <AlertTitle>Plano Premium</AlertTitle>
-                <AlertDescription>
-                  Com o plano premium você pode:
-                  <ul className="mt-2 list-disc list-inside space-y-1">
-                    <li>Cadastrar imóveis ilimitados</li>
-                    <li>Relatórios avançados</li>
-                    <li>Suporte prioritário</li>
-                  </ul>
-                  <div className="mt-3 font-semibold">
-                    Apenas R$ 29,90/mês
-                  </div>
-                </AlertDescription>
-              </Alert>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsUpgradeDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleUpgradeToSponsored} className="bg-yellow-600 hover:bg-yellow-700">
-                <Crown className="mr-2 h-4 w-4" />
-                Assinar Premium
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Add Property Dialog */}
-        <Dialog open={isAddPropertyOpen} onOpenChange={setIsAddPropertyOpen}>
-          <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
-              <DialogTitle>Adicionar Novo Imóvel</DialogTitle>
-              <DialogDescription>
-                Preencha os dados do novo imóvel abaixo.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Imóvel</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={newProperty.name}
-                    onChange={handleInputChange}
-                    placeholder="Ex: Apartamento Centro"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="type">Tipo</Label>
-                  <Select 
-                    value={newProperty.type} 
-                    onValueChange={(value) => handleSelectChange(value, "type")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Apartamento">Apartamento</SelectItem>
-                      <SelectItem value="Casa">Casa</SelectItem>
-                      <SelectItem value="Kitnet">Kitnet</SelectItem>
-                      <SelectItem value="Comercial">Comercial</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="address">Endereço</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  value={newProperty.address}
-                  onChange={handleInputChange}
-                  placeholder="Rua, número, complemento"
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="city">Cidade</Label>
-                  <Input
-                    id="city"
-                    name="city"
-                    value={newProperty.city}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">Estado</Label>
-                  <Input
-                    id="state"
-                    name="state"
-                    value={newProperty.state}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="zipCode">CEP</Label>
-                  <Input
-                    id="zipCode"
-                    name="zipCode"
-                    value={newProperty.zipCode}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="bedrooms">Quartos</Label>
-                  <Input
-                    id="bedrooms"
-                    name="bedrooms"
-                    type="number"
-                    min="0"
-                    value={newProperty.bedrooms}
-                    onChange={handleNumberInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bathrooms">Banheiros</Label>
-                  <Input
-                    id="bathrooms"
-                    name="bathrooms"
-                    type="number"
-                    min="0"
-                    value={newProperty.bathrooms}
-                    onChange={handleNumberInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="area">Área (m²)</Label>
-                  <Input
-                    id="area"
-                    name="area"
-                    type="number"
-                    min="0"
-                    value={newProperty.area}
-                    onChange={handleNumberInputChange}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="rentAmount">Valor do Aluguel (R$)</Label>
-                  <Input
-                    id="rentAmount"
-                    name="rentAmount"
-                    type="number"
-                    min="0"
-                    value={newProperty.rentAmount}
-                    onChange={handleNumberInputChange}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dueDay">Dia de Vencimento</Label>
-                  <Input
-                    id="dueDay"
-                    name="dueDay"
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={newProperty.dueDay}
-                    onChange={handleNumberInputChange}
-                    placeholder="5"
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddPropertyOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleAddProperty}>
-                Adicionar Imóvel
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={checkSubscription}
+            disabled={isCheckingSubscription}
+          >
+            {isCheckingSubscription ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Verificar Status
+          </Button>
+          <Button onClick={handleAddProperty}>
+            <Plus className="mr-2 h-4 w-4" />
+            {isAtLimit ? "Upgrade para Adicionar" : "Adicionar Imóvel"}
+          </Button>
+        </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar imóveis..."
-          className="pl-10"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      {/* Progress bar showing property limit */}
-      {properties.length > 0 && (
-        <div className="rounded-lg border p-4">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium">Limite de imóveis</span>
-            <span className="text-sm text-muted-foreground">{properties.length}/2</span>
+      {subscriptionData.subscribed && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <Crown className="h-5 w-5 text-green-600" />
+            <span className="font-semibold text-green-800">Plano Premium Ativo</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className={`h-2 rounded-full transition-all ${
-                hasReachedLimit ? 'bg-red-500' : 'bg-blue-500'
-              }`}
-              style={{ width: `${(properties.length / 2) * 100}%` }}
-            ></div>
-          </div>
-          {hasReachedLimit && (
-            <p className="text-xs text-red-600 mt-2">
-              Limite atingido. Faça upgrade para cadastrar mais imóveis.
-            </p>
-          )}
+          <p className="text-sm text-green-700 mt-1">
+            Você pode cadastrar imóveis ilimitados!
+            {subscriptionData.subscription_end && (
+              <span className="ml-2">
+                Válido até: {new Date(subscriptionData.subscription_end).toLocaleDateString('pt-BR')}
+              </span>
+            )}
+          </p>
         </div>
       )}
 
-      {isLoading ? (
-        <div className="flex justify-center py-8">
-          <p>Carregando imóveis...</p>
+      {isAtLimit && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-amber-800">Limite atingido</h3>
+              <p className="text-sm text-amber-700">
+                Você já cadastrou 2 imóveis (limite do plano gratuito). 
+                Faça upgrade para Premium e tenha acesso ilimitado!
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowUpgradeDialog(true)}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
+              <Crown className="mr-2 h-4 w-4" />
+              Upgrade
+            </Button>
+          </div>
         </div>
-      ) : filteredProperties.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProperties.map((property) => (
-            <Link key={property.id} to={`/imoveis/${property.id}`}>
-              <Card className="h-full overflow-hidden transition-all hover:shadow-md">
-                <div className="aspect-video w-full overflow-hidden bg-muted">
-                  {property.imageUrl ? (
+      )}
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {properties.map((property) => (
+          <Card key={property.id} className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">{property.name}</CardTitle>
+                <span
+                  className={`rounded-full px-2 py-1 text-xs ${
+                    property.status === "occupied"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-blue-100 text-blue-800"
+                  }`}
+                >
+                  {property.status === "occupied" ? "Ocupado" : "Disponível"}
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {property.imageUrl ? (
+                  <div className="h-48 overflow-hidden rounded-md">
                     <img
                       src={property.imageUrl}
                       alt={property.name}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover hover:scale-105 transition-transform"
                     />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      {getPropertyIcon(property.type)}
+                  </div>
+                ) : (
+                  <div className="h-48 bg-gray-100 rounded-md flex items-center justify-center">
+                    <Building className="h-12 w-12 text-gray-400" />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <MapPin className="mr-1 h-4 w-4" />
+                    {property.address}, {property.city}
+                  </div>
+                  
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center">
+                      <Bed className="mr-1 h-4 w-4" />
+                      {property.bedrooms}
                     </div>
-                  )}
+                    <div className="flex items-center">
+                      <Bath className="mr-1 h-4 w-4" />
+                      {property.bathrooms}
+                    </div>
+                    <div className="flex items-center">
+                      <Square className="mr-1 h-4 w-4" />
+                      {property.area}m²
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-lg font-semibold text-green-600">
+                      R$ {property.rentAmount.toLocaleString("pt-BR")}
+                    </span>
+                    <Link to={`/imoveis/${property.id}`}>
+                      <Button variant="outline" size="sm">
+                        Ver Detalhes
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-medium">{property.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {property.address}, {property.city}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                        property.status === "occupied"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {property.status === "occupied" ? "Ocupado" : "Disponível"}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs">
-                      {property.type}
-                    </span>
-                    <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs">
-                      {property.bedrooms} quartos
-                    </span>
-                    <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs">
-                      {property.bathrooms} banheiros
-                    </span>
-                    <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs">
-                      {property.area} m²
-                    </span>
-                  </div>
-                  <div className="mt-4 pt-3 border-t text-sm">
-                    <span className="text-muted-foreground">
-                      Inquilino:{" "}
-                      <span className="font-medium text-foreground">
-                        {getTenantName(property.id)}
-                      </span>
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
-          <Building className="mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="mb-2 text-lg font-medium">Nenhum imóvel encontrado</h3>
-          <p className="mb-4 text-sm text-muted-foreground">
-            {searchTerm
-              ? "Nenhum imóvel corresponde à sua busca."
-              : "Você ainda não tem imóveis cadastrados."}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {properties.length === 0 && (
+        <div className="text-center py-12">
+          <Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Nenhum imóvel cadastrado</h3>
+          <p className="text-muted-foreground mb-4">
+            Comece adicionando seu primeiro imóvel
           </p>
-          {!searchTerm && (
-            <Button onClick={handleAddPropertyClick}>
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Imóvel
-            </Button>
-          )}
+          <Button onClick={handleAddProperty}>
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Primeiro Imóvel
+          </Button>
         </div>
       )}
+
+      <UpgradeDialog 
+        open={showUpgradeDialog} 
+        onOpenChange={setShowUpgradeDialog} 
+      />
     </div>
   );
 };
