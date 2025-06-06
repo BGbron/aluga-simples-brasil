@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Properties from "./pages/Properties";
+import AddProperty from "./pages/AddProperty";
 import Tenants from "./pages/Tenants";
 import Payments from "./pages/Payments";
 import PropertyDetails from "./pages/PropertyDetails";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<PrivateRoute element={<Dashboard />} />} />
             <Route path="/imoveis" element={<PrivateRoute element={<Properties />} />} />
+            <Route path="/imoveis/adicionar" element={<PrivateRoute element={<AddProperty />} />} />
             <Route path="/imoveis/:id" element={<PrivateRoute element={<PropertyDetails />} />} />
             <Route path="/inquilinos" element={<PrivateRoute element={<Tenants />} />} />
             <Route path="/inquilinos/:id" element={<PrivateRoute element={<TenantDetails />} />} />

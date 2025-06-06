@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Property } from "@/lib/types";
 import { getProperties } from "@/lib/mockData";
-import { Building, Plus, MapPin, Bed, Bath, Square, Crown, RefreshCw } from "lucide-react";
+import { Building, Plus, MapPin, Bed, Bath, Square, Crown } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import UpgradeDialog from "@/components/UpgradeDialog";
@@ -13,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Properties = () => {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-  const { subscriptionData, checkSubscription, isCheckingSubscription } = useAuth();
+  const { subscriptionData } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -30,10 +29,6 @@ const Properties = () => {
         title: "Assinatura realizada com sucesso!",
         description: "Seu plano Premium foi ativado. Agora você pode cadastrar imóveis ilimitados!",
       });
-      // Check subscription status after successful payment
-      setTimeout(() => {
-        checkSubscription();
-      }, 2000);
       // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (urlParams.get('canceled') === 'true') {
@@ -45,7 +40,7 @@ const Properties = () => {
       // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [toast, checkSubscription]);
+  }, [toast]);
 
   const handleAddProperty = () => {
     // Check if user has reached the limit (2 properties for free users)
@@ -55,11 +50,7 @@ const Properties = () => {
     }
     
     // If subscribed or under limit, redirect to add property page
-    // For now, we'll show a different message since the add property page doesn't exist yet
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "A página de adicionar imóvel ainda não foi criada. Você pode adicionar esta funcionalidade.",
-    });
+    navigate("/imoveis/adicionar");
   };
 
   const isAtLimit = !subscriptionData.subscribed && properties.length >= 2;
@@ -79,19 +70,6 @@ const Properties = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={checkSubscription}
-            disabled={isCheckingSubscription}
-          >
-            {isCheckingSubscription ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            Verificar Status
-          </Button>
           <Button onClick={handleAddProperty}>
             <Plus className="mr-2 h-4 w-4" />
             {isAtLimit ? "Upgrade para Adicionar" : "Adicionar Imóvel"}
