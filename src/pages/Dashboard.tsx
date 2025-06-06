@@ -24,6 +24,7 @@ const Dashboard = () => {
     queryFn: getPayments,
   });
 
+  // Filter payments by status
   const pendingPayments = payments.filter((p) => p.status === "pending");
   const overduePayments = payments.filter((p) => p.status === "overdue");
   const paidPayments = payments.filter((p) => p.status === "paid");

@@ -1,276 +1,217 @@
 
-import { Property, Tenant, Payment, PaymentStatus } from "./types";
+import { Property, Tenant, Payment } from "./types";
+import { supabase } from "@/integrations/supabase/client";
+import { generatePaymentForTenant } from "./supabaseQueries";
 
-// Initial mock data (empty arrays)
-const initialProperties: Property[] = [];
-const initialTenants: Tenant[] = [];
-const initialPayments: Payment[] = [];
+// Mock data for properties
+let properties: Property[] = [
+  {
+    id: "1",
+    name: "Casa da Praia",
+    address: "Rua das Flores, 123",
+    city: "Florianópolis",
+    state: "SC",
+    zipCode: "88000-000",
+    type: "casa",
+    bedrooms: 3,
+    bathrooms: 2,
+    area: 120,
+    imageUrl: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+    tenantId: "1",
+    status: "occupied",
+    rentAmount: 2500,
+    dueDay: 5,
+  },
+  {
+    id: "2",
+    name: "Apartamento Centro",
+    address: "Av. Beira Mar, 456",
+    city: "Florianópolis",
+    state: "SC",
+    zipCode: "88001-000",
+    type: "apartamento",
+    bedrooms: 2,
+    bathrooms: 1,
+    area: 80,
+    imageUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+    status: "available",
+    rentAmount: 1800,
+    dueDay: 10,
+  },
+];
 
-// Helper function to get data from localStorage or use initial data
-const getLocalData = <T>(key: string, initialData: T[]): T[] => {
-  const storedData = localStorage.getItem(key);
-  return storedData ? JSON.parse(storedData) : initialData;
-};
+// Mock data for tenants
+let tenants: Tenant[] = [
+  {
+    id: "1",
+    name: "João Silva",
+    email: "joao@email.com",
+    phone: "(48) 99999-9999",
+    cpf: "123.456.789-00",
+    startDate: "2024-01-01",
+    endDate: "2024-12-31",
+    propertyId: "1",
+  },
+];
 
-// Helper function to save data to localStorage
-const saveLocalData = <T>(key: string, data: T[]): void => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
-
-// Get data from localStorage or use initial data
-let mockProperties: Property[] = getLocalData<Property>('properties', initialProperties);
-let mockTenants: Tenant[] = getLocalData<Tenant>('tenants', initialTenants);
-let paymentCache: Payment[] = getLocalData<Payment>('payments', initialPayments);
-
-// Migrate existing data to new structure
-const migrateData = () => {
-  let needsSave = false;
-  
-  // Migrate properties - add default rentAmount and dueDay if missing
-  mockProperties = mockProperties.map(property => {
-    if (!property.hasOwnProperty('rentAmount')) {
-      needsSave = true;
-      return {
-        ...property,
-        rentAmount: 0,
-        dueDay: 5
-      };
-    }
-    return property;
-  });
-
-  // Update property status based on tenant assignment
-  mockProperties = mockProperties.map(property => {
-    const hasTenant = mockTenants.some(tenant => tenant.propertyId === property.id);
-    const newStatus = hasTenant ? 'occupied' : 'available';
-    if (property.status !== newStatus) {
-      needsSave = true;
-      return { ...property, status: newStatus };
-    }
-    return property;
-  });
-
-  if (needsSave) {
-    saveLocalData('properties', mockProperties);
-  }
-};
-
-// Run migration on load
-migrateData();
-
-// Helper functions to simulate API calls
-export const getProperties = (): Promise<Property[]> => {
+// Property functions
+export const getProperties = async (): Promise<Property[]> => {
+  // For now, return mock data. Later this can be replaced with Supabase queries
   return new Promise((resolve) => {
-    setTimeout(() => resolve([...mockProperties]), 500);
+    setTimeout(() => resolve([...properties]), 100);
   });
 };
 
-export const getTenants = (): Promise<Tenant[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve([...mockTenants]), 500);
-  });
-};
-
-export const getPayments = (): Promise<Payment[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve([...paymentCache]), 500);
-  });
-};
-
-export const addPayment = (data: Omit<Payment, "id" | "paidDate">): Promise<Payment> => {
+export const getPropertyById = async (id: string): Promise<Property | undefined> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const newPayment: Payment = {
-        ...data,
-        id: `pay${paymentCache.length + 1}`,
-        status: data.status || "pending",
-      };
-
-      const dueDate = new Date(newPayment.dueDate);
-      const today = new Date();
-      if (dueDate < today && newPayment.status === "pending") {
-        newPayment.status = "overdue";
-      }
-
-      paymentCache.push(newPayment);
-      saveLocalData('payments', paymentCache);
-      resolve(newPayment);
-    }, 500);
+      const property = properties.find((p) => p.id === id);
+      resolve(property);
+    }, 100);
   });
 };
 
-export const updatePayment = (id: string, data: Partial<Payment>): Promise<Payment> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const index = paymentCache.findIndex(p => p.id === id);
-      if (index !== -1) {
-        paymentCache[index] = { ...paymentCache[index], ...data };
-        
-        if (data.status === "paid" && !paymentCache[index].paidDate) {
-          paymentCache[index].paidDate = new Date().toISOString().split('T')[0];
-        }
-        
-        saveLocalData('payments', paymentCache);
-        resolve(paymentCache[index]);
-      } else {
-        reject(new Error("Pagamento não encontrado"));
-      }
-    }, 300);
-  });
-};
-
-export const getProperty = (id: string): Promise<Property | undefined> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(mockProperties.find(p => p.id === id)), 500);
-  });
-};
-
-export const getTenant = (id: string): Promise<Tenant | undefined> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(mockTenants.find(t => t.id === id)), 500);
-  });
-};
-
-export const getPaymentsForTenant = (tenantId: string): Promise<Payment[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(paymentCache.filter(p => p.tenantId === tenantId)), 500);
-  });
-};
-
-export const getPaymentsForProperty = (propertyId: string): Promise<Payment[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(paymentCache.filter(p => p.propertyId === propertyId)), 500);
-  });
-};
-
-export const addTenant = (tenant: Omit<Tenant, "id">): Promise<Tenant> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const newTenant: Tenant = {
-        ...tenant,
-        id: `t${mockTenants.length + 1}`,
-      };
-      mockTenants.push(newTenant);
-      
-      // Update property status to occupied
-      const propertyIndex = mockProperties.findIndex(p => p.id === tenant.propertyId);
-      if (propertyIndex !== -1) {
-        mockProperties[propertyIndex].status = 'occupied';
-        mockProperties[propertyIndex].tenantId = newTenant.id;
-        saveLocalData('properties', mockProperties);
-      }
-      
-      saveLocalData('tenants', mockTenants);
-      resolve(newTenant);
-    }, 500);
-  });
-};
-
-export const updateTenant = (id: string, data: Partial<Tenant>): Promise<Tenant> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const index = mockTenants.findIndex(t => t.id === id);
-      if (index !== -1) {
-        const oldTenant = mockTenants[index];
-        mockTenants[index] = { ...mockTenants[index], ...data };
-        
-        // If property changed, update old and new property status
-        if (data.propertyId && data.propertyId !== oldTenant.propertyId) {
-          // Mark old property as available
-          const oldPropertyIndex = mockProperties.findIndex(p => p.id === oldTenant.propertyId);
-          if (oldPropertyIndex !== -1) {
-            mockProperties[oldPropertyIndex].status = 'available';
-            mockProperties[oldPropertyIndex].tenantId = undefined;
-          }
-          
-          // Mark new property as occupied
-          const newPropertyIndex = mockProperties.findIndex(p => p.id === data.propertyId);
-          if (newPropertyIndex !== -1) {
-            mockProperties[newPropertyIndex].status = 'occupied';
-            mockProperties[newPropertyIndex].tenantId = id;
-          }
-          
-          saveLocalData('properties', mockProperties);
-        }
-        
-        saveLocalData('tenants', mockTenants);
-        resolve(mockTenants[index]);
-      } else {
-        reject(new Error("Inquilino não encontrado"));
-      }
-    }, 300);
-  });
-};
-
-export const deleteTenant = (id: string): Promise<boolean> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const index = mockTenants.findIndex(t => t.id === id);
-      if (index !== -1) {
-        const tenant = mockTenants[index];
-        mockTenants.splice(index, 1);
-        
-        // Update property status to available
-        const propertyIndex = mockProperties.findIndex(p => p.id === tenant.propertyId);
-        if (propertyIndex !== -1) {
-          mockProperties[propertyIndex].status = 'available';
-          mockProperties[propertyIndex].tenantId = undefined;
-          saveLocalData('properties', mockProperties);
-        }
-        
-        saveLocalData('tenants', mockTenants);
-        resolve(true);
-      } else {
-        reject(new Error("Inquilino não encontrado"));
-      }
-    }, 300);
-  });
-};
-
-export const updateProperty = (id: string, data: Partial<Property>): Promise<Property> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const index = mockProperties.findIndex(p => p.id === id);
-      if (index !== -1) {
-        mockProperties[index] = { ...mockProperties[index], ...data };
-        saveLocalData('properties', mockProperties);
-        resolve(mockProperties[index]);
-      } else {
-        reject(new Error("Imóvel não encontrado"));
-      }
-    }, 300);
-  });
-};
-
-export const deleteProperty = (id: string): Promise<boolean> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const index = mockProperties.findIndex(p => p.id === id);
-      if (index !== -1) {
-        mockProperties.splice(index, 1);
-        saveLocalData('properties', mockProperties);
-        resolve(true);
-      } else {
-        reject(new Error("Imóvel não encontrado"));
-      }
-    }, 300);
-  });
-};
-
-export const addProperty = (property: Omit<Property, "id">): Promise<Property> => {
+export const addProperty = async (property: Omit<Property, "id">): Promise<Property> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const newProperty: Property = {
         ...property,
-        id: `p${mockProperties.length + 1}`,
-        status: property.status || 'available',
-        rentAmount: property.rentAmount || 0,
-        dueDay: property.dueDay || 5,
+        id: Date.now().toString(),
+      };
+      properties.push(newProperty);
+      resolve(newProperty);
+    }, 100);
+  });
+};
+
+export const updateProperty = async (id: string, updates: Partial<Property>): Promise<Property> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const index = properties.findIndex((p) => p.id === id);
+      if (index === -1) {
+        reject(new Error("Property not found"));
+        return;
+      }
+      properties[index] = { ...properties[index], ...updates };
+      resolve(properties[index]);
+    }, 100);
+  });
+};
+
+// Tenant functions
+export const getTenants = async (): Promise<Tenant[]> => {
+  return new Promise((resolve) => {
+    setTimeout(() => resolve([...tenants]), 100);
+  });
+};
+
+export const getTenantById = async (id: string): Promise<Tenant | undefined> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const tenant = tenants.find((t) => t.id === id);
+      resolve(tenant);
+    }, 100);
+  });
+};
+
+export const addTenant = async (tenant: Omit<Tenant, "id">): Promise<Tenant> => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const newTenant: Tenant = {
+        ...tenant,
+        id: Date.now().toString(),
       };
       
-      mockProperties.push(newProperty);
-      saveLocalData('properties', mockProperties);
-      resolve(newProperty);
-    }, 500);
+      tenants.push(newTenant);
+      
+      // Update property status to occupied
+      const propertyIndex = properties.findIndex((p) => p.id === tenant.propertyId);
+      if (propertyIndex !== -1) {
+        properties[propertyIndex].status = "occupied";
+        properties[propertyIndex].tenantId = newTenant.id;
+        
+        // Generate initial payment for the tenant
+        await generatePaymentForTenant(newTenant, properties[propertyIndex]);
+      }
+      
+      resolve(newTenant);
+    } catch (error) {
+      reject(error);
+    }
   });
+};
+
+export const updateTenant = async (id: string, updates: Partial<Tenant>): Promise<Tenant> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const index = tenants.findIndex((t) => t.id === id);
+      if (index === -1) {
+        reject(new Error("Tenant not found"));
+        return;
+      }
+      tenants[index] = { ...tenants[index], ...updates };
+      resolve(tenants[index]);
+    }, 100);
+  });
+};
+
+export const deleteTenant = async (id: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const tenant = tenants.find((t) => t.id === id);
+      if (!tenant) {
+        reject(new Error("Tenant not found"));
+        return;
+      }
+      
+      // Update property status to available
+      const propertyIndex = properties.findIndex((p) => p.id === tenant.propertyId);
+      if (propertyIndex !== -1) {
+        properties[propertyIndex].status = "available";
+        delete properties[propertyIndex].tenantId;
+      }
+      
+      // Remove tenant
+      tenants = tenants.filter((t) => t.id !== id);
+      resolve();
+    }, 100);
+  });
+};
+
+// Payment functions - Now using Supabase
+export const getPayments = async (): Promise<Payment[]> => {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .order('due_date', { ascending: false });
+  
+  if (error) {
+    console.error('Error fetching payments:', error);
+    throw error;
+  }
+  
+  return data || [];
+};
+
+export const updatePayment = async (id: string, updates: Partial<Payment>): Promise<Payment> => {
+  const updateData: any = { ...updates };
+  
+  // If marking as paid, set paid_date to today
+  if (updates.status === 'paid' && !updates.paidDate) {
+    updateData.paid_date = new Date().toISOString().split('T')[0];
+  }
+  
+  const { data, error } = await supabase
+    .from('payments')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('Error updating payment:', error);
+    throw error;
+  }
+  
+  return data;
 };

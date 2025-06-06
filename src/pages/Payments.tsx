@@ -1,12 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Search, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { getPayments, updatePayment, getTenants, getProperties } from "@/lib/mockData";
+import { getPayments, updatePayment, getTenants, getProperties, generateMonthlyPayments, updateOverduePayments } from "@/lib/mockData";
 import { toast } from "@/components/ui/sonner";
 import {
   Select,
@@ -35,6 +35,21 @@ const Payments = () => {
     queryKey: ["properties"],
     queryFn: getProperties,
   });
+
+  // Auto-generate payments and update overdue status on component mount
+  useEffect(() => {
+    const initializePayments = async () => {
+      try {
+        await generateMonthlyPayments();
+        await updateOverduePayments();
+        queryClient.invalidateQueries({ queryKey: ["payments"] });
+      } catch (error) {
+        console.error('Error initializing payments:', error);
+      }
+    };
+    
+    initializePayments();
+  }, [queryClient]);
 
   const updatePaymentMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: "paid" | "pending" | "overdue" }) =>
@@ -217,6 +232,45 @@ const Payments = () => {
       )}
     </div>
   );
+};
+
+const getStatusVariant = (status: string) => {
+  switch (status) {
+    case "paid":
+      return "default" as const;
+    case "overdue":
+      return "destructive" as const;
+    case "pending":
+      return "secondary" as const;
+    default:
+      return "outline" as const;
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case "paid":
+      return <CheckCircle className="h-4 w-4" />;
+    case "overdue":
+      return <AlertCircle className="h-4 w-4" />;
+    case "pending":
+      return <Clock className="h-4 w-4" />;
+    default:
+      return <Clock className="h-4 w-4" />;
+  }
+};
+
+const getStatusText = (status: string) => {
+  switch (status) {
+    case "paid":
+      return "Pago";
+    case "overdue":
+      return "Em atraso";
+    case "pending":
+      return "Pendente";
+    default:
+      return "Pendente";
+  }
 };
 
 export default Payments;

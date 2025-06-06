@@ -37,6 +37,13 @@ export interface Payment {
   paidDate?: string;
   status: 'pending' | 'paid' | 'overdue';
   description: string;
+  // Supabase specific fields
+  tenant_id?: string;
+  property_id?: string;
+  due_date?: string;
+  paid_date?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export type PaymentStatus = 'pending' | 'paid' | 'overdue';
