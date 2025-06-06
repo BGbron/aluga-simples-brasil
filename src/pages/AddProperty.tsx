@@ -1,19 +1,20 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Building } from "lucide-react";
+import { addProperty } from "@/lib/mockData";
 
 const AddProperty = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -29,6 +30,28 @@ const AddProperty = () => {
     dueDay: "",
   });
 
+  const addPropertyMutation = useMutation({
+    mutationFn: addProperty,
+    onSuccess: () => {
+      toast({
+        title: "Imóvel adicionado com sucesso!",
+        description: "O imóvel foi cadastrado no sistema.",
+      });
+      
+      // Invalidate and refetch properties to update the list
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      
+      navigate("/imoveis");
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao adicionar imóvel",
+        description: "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -38,26 +61,36 @@ const AddProperty = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      // Here you would normally save to database
-      // For now, just show success message
+    
+    // Validate required fields
+    if (!formData.name || !formData.address || !formData.city || !formData.state || 
+        !formData.type || !formData.bedrooms || !formData.bathrooms || 
+        !formData.area || !formData.rentAmount || !formData.dueDay) {
       toast({
-        title: "Imóvel adicionado com sucesso!",
-        description: "O imóvel foi cadastrado no sistema.",
-      });
-      
-      navigate("/imoveis");
-    } catch (error) {
-      toast({
-        title: "Erro ao adicionar imóvel",
-        description: "Tente novamente mais tarde.",
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios.",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
+      return;
     }
+
+    // Convert strings to numbers where needed
+    const propertyData = {
+      name: formData.name,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      zipCode: formData.zipCode,
+      type: formData.type,
+      bedrooms: parseInt(formData.bedrooms),
+      bathrooms: parseInt(formData.bathrooms),
+      area: parseInt(formData.area),
+      rentAmount: parseFloat(formData.rentAmount),
+      dueDay: parseInt(formData.dueDay),
+      status: 'available' as const,
+    };
+
+    addPropertyMutation.mutate(propertyData);
   };
 
   return (
@@ -205,6 +238,7 @@ const AddProperty = () => {
                 <Input
                   id="rentAmount"
                   type="number"
+                  step="0.01"
                   value={formData.rentAmount}
                   onChange={(e) => handleInputChange("rentAmount", e.target.value)}
                   placeholder="0.00"
@@ -234,12 +268,12 @@ const AddProperty = () => {
                 type="button"
                 variant="outline"
                 onClick={() => navigate("/imoveis")}
-                disabled={isSubmitting}
+                disabled={addPropertyMutation.isPending}
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Adicionando..." : "Adicionar Imóvel"}
+              <Button type="submit" disabled={addPropertyMutation.isPending}>
+                {addPropertyMutation.isPending ? "Adicionando..." : "Adicionar Imóvel"}
               </Button>
             </div>
           </form>
