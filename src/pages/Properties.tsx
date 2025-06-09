@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Property } from "@/lib/types";
-import { getProperties } from "@/lib/mockData";
+import { getProperties } from "@/lib/supabaseQueries";
 import { Building, Plus, MapPin, Bed, Bath, Square, Crown } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +17,7 @@ const Properties = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const { data: properties = [] } = useQuery({
+  const { data: properties = [], isLoading } = useQuery({
     queryKey: ["properties"],
     queryFn: getProperties,
   });
@@ -29,7 +30,6 @@ const Properties = () => {
         title: "Assinatura realizada com sucesso!",
         description: "Seu plano Premium foi ativado. Agora você pode cadastrar imóveis ilimitados!",
       });
-      // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (urlParams.get('canceled') === 'true') {
       toast({
@@ -37,23 +37,24 @@ const Properties = () => {
         description: "Você ainda pode cadastrar até 2 imóveis no plano gratuito.",
         variant: "destructive",
       });
-      // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [toast]);
 
   const handleAddProperty = () => {
-    // Check if user has reached the limit (2 properties for free users)
     if (!subscriptionData.subscribed && properties.length >= 2) {
       setShowUpgradeDialog(true);
       return;
     }
     
-    // If subscribed or under limit, redirect to add property page
     navigate("/imoveis/adicionar");
   };
 
   const isAtLimit = !subscriptionData.subscribed && properties.length >= 2;
+
+  if (isLoading) {
+    return <div className="flex justify-center py-8">Carregando imóveis...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -170,9 +171,14 @@ const Properties = () => {
                   </div>
                   
                   <div className="flex items-center justify-between pt-2">
-                    <span className="text-lg font-semibold text-green-600">
-                      R$ {property.rentAmount.toLocaleString("pt-BR")}
-                    </span>
+                    <div>
+                      <span className="text-lg font-semibold text-green-600">
+                        R$ {property.rentAmount.toLocaleString("pt-BR")}
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        Venc. dia {property.dueDay}
+                      </p>
+                    </div>
                     <Link to={`/imoveis/${property.id}`}>
                       <Button variant="outline" size="sm">
                         Ver Detalhes

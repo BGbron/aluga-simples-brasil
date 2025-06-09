@@ -2,12 +2,11 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Search, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { getPayments, updatePayment, getTenants, getProperties } from "@/lib/mockData";
-import { generateMonthlyPayments, updateOverduePayments } from "@/lib/supabaseQueries";
+import { getPayments, updatePayment, getTenants, getProperties, generateMonthlyPayments, updateOverduePayments } from "@/lib/supabaseQueries";
 import { toast } from "@/components/ui/sonner";
 import {
   Select,
@@ -122,17 +121,13 @@ const Payments = () => {
   };
 
   if (isLoading) {
-    return <div className="flex justify-center py-8">Carregando...</div>;
+    return <div className="flex justify-center py-8">Carregando pagamentos...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Pagamentos</h1>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Pagamento
-        </Button>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row">
@@ -225,7 +220,7 @@ const Payments = () => {
               <p className="mt-2 text-muted-foreground">
                 {searchTerm || statusFilter !== "all"
                   ? "Tente ajustar os filtros de busca."
-                  : "Comece adicionando um novo pagamento."}
+                  : "Os pagamentos serão gerados automaticamente quando você adicionar inquilinos."}
               </p>
             </div>
           </CardContent>

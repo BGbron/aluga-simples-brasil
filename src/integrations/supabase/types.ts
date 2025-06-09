@@ -21,6 +21,7 @@ export type Database = {
           status: string
           tenant_id: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           amount: number
@@ -33,6 +34,7 @@ export type Database = {
           status?: string
           tenant_id: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -45,8 +47,80 @@ export type Database = {
           status?: string
           tenant_id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
+      }
+      properties: {
+        Row: {
+          address: string
+          area: number
+          bathrooms: number
+          bedrooms: number
+          city: string
+          created_at: string
+          due_day: number
+          id: string
+          image_url: string | null
+          name: string
+          rent_amount: number
+          state: string
+          status: string
+          tenant_id: string | null
+          type: string
+          updated_at: string
+          user_id: string
+          zip_code: string | null
+        }
+        Insert: {
+          address: string
+          area: number
+          bathrooms: number
+          bedrooms: number
+          city: string
+          created_at?: string
+          due_day: number
+          id?: string
+          image_url?: string | null
+          name: string
+          rent_amount: number
+          state: string
+          status?: string
+          tenant_id?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string
+          area?: number
+          bathrooms?: number
+          bedrooms?: number
+          city?: string
+          created_at?: string
+          due_day?: number
+          id?: string
+          image_url?: string | null
+          name?: string
+          rent_amount?: number
+          state?: string
+          status?: string
+          tenant_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_properties_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscribers: {
         Row: {
@@ -83,6 +157,56 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      tenants: {
+        Row: {
+          cpf: string
+          created_at: string
+          email: string
+          end_date: string
+          id: string
+          name: string
+          phone: string
+          property_id: string | null
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cpf: string
+          created_at?: string
+          email: string
+          end_date: string
+          id?: string
+          name: string
+          phone: string
+          property_id?: string | null
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          email?: string
+          end_date?: string
+          id?: string
+          name?: string
+          phone?: string
+          property_id?: string | null
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenants_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

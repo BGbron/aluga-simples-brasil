@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { Property } from "@/lib/types";
-import { getProperty, updateProperty, deleteProperty } from "@/lib/mockData";
+import { getProperty, updateProperty, deleteProperty } from "@/lib/supabaseQueries";
 import { Building, Edit, Trash2, Home, Store } from "lucide-react";
 
 const PropertyDetails = () => {
@@ -38,14 +38,12 @@ const PropertyDetails = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProperty, setEditedProperty] = useState<Property | null>(null);
 
-  // Get property details
   const { data: property, isLoading, error } = useQuery({
     queryKey: ["property", id],
     queryFn: () => getProperty(id!),
     enabled: !!id
   });
 
-  // Mutation for updating a property
   const updatePropertyMutation = useMutation({
     mutationFn: (data: Partial<Property>) => updateProperty(id!, data),
     onSuccess: () => {
@@ -63,7 +61,6 @@ const PropertyDetails = () => {
     }
   });
 
-  // Mutation for deleting a property
   const deletePropertyMutation = useMutation({
     mutationFn: () => deleteProperty(id!),
     onSuccess: () => {
@@ -81,7 +78,6 @@ const PropertyDetails = () => {
     }
   });
 
-  // Function to get the appropriate icon based on property type
   const getPropertyIcon = (type: string) => {
     switch (type) {
       case "Casa":
@@ -187,27 +183,16 @@ const PropertyDetails = () => {
             <div className="p-4">
               <h3 className="mb-4 text-lg font-semibold">Informações do Imóvel</h3>
               <div className="space-y-2">
-                <p>
-                  <strong>Nome:</strong> {property.name}
-                </p>
-                <p>
-                  <strong>Endereço:</strong> {property.address}, {property.city} - {property.state}, {property.zipCode}
-                </p>
-                <p>
-                  <strong>Tipo:</strong> {property.type}
-                </p>
-                <p>
-                  <strong>Quartos:</strong> {property.bedrooms}
-                </p>
-                <p>
-                  <strong>Banheiros:</strong> {property.bathrooms}
-                </p>
-                <p>
-                  <strong>Área:</strong> {property.area} m²
-                </p>
-                <p>
-                  <strong>Status:</strong> {property.status === "occupied" ? "Ocupado" : "Disponível"}
-                </p>
+                <p><strong>Nome:</strong> {property.name}</p>
+                <p><strong>Endereço:</strong> {property.address}, {property.city} - {property.state}</p>
+                {property.zipCode && <p><strong>CEP:</strong> {property.zipCode}</p>}
+                <p><strong>Tipo:</strong> {property.type}</p>
+                <p><strong>Quartos:</strong> {property.bedrooms}</p>
+                <p><strong>Banheiros:</strong> {property.bathrooms}</p>
+                <p><strong>Área:</strong> {property.area} m²</p>
+                <p><strong>Valor do Aluguel:</strong> R$ {property.rentAmount.toLocaleString("pt-BR")}</p>
+                <p><strong>Dia de Vencimento:</strong> {property.dueDay}</p>
+                <p><strong>Status:</strong> {property.status === "occupied" ? "Ocupado" : "Disponível"}</p>
               </div>
             </div>
           </div>
@@ -217,7 +202,15 @@ const PropertyDetails = () => {
             <div className="p-4">
               <h3 className="mb-4 text-lg font-semibold">Imagem do Imóvel</h3>
               <div className="flex h-48 items-center justify-center rounded-md bg-muted">
-                {getPropertyIcon(property.type)}
+                {property.imageUrl ? (
+                  <img
+                    src={property.imageUrl}
+                    alt={property.name}
+                    className="h-full w-full object-cover rounded-md"
+                  />
+                ) : (
+                  getPropertyIcon(property.type)
+                )}
               </div>
             </div>
           </div>
@@ -303,7 +296,7 @@ const PropertyDetails = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
               <div className="space-y-2">
                 <Label htmlFor="bedrooms">Quartos</Label>
                 <Input
@@ -337,22 +330,30 @@ const PropertyDetails = () => {
                   onChange={handleNumberChange}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="dueDay">Dia Venc.</Label>
+                <Input
+                  id="dueDay"
+                  name="dueDay"
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={editedProperty?.dueDay || 1}
+                  onChange={handleNumberChange}
+                />
+              </div>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select 
-                value={editedProperty?.status || "available"}
-                onValueChange={(value: "available" | "occupied") => handleSelectChange(value, "status")}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="available">Disponível</SelectItem>
-                  <SelectItem value="occupied">Ocupado</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="rentAmount">Valor do Aluguel (R$)</Label>
+              <Input
+                id="rentAmount"
+                name="rentAmount"
+                type="number"
+                min="0"
+                value={editedProperty?.rentAmount || 0}
+                onChange={handleNumberChange}
+              />
             </div>
           </div>
           <DialogFooter>
