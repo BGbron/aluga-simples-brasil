@@ -1,3 +1,4 @@
+
 import { Property, Tenant, Payment } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { generatePaymentForTenant } from "./supabaseQueries";
@@ -61,6 +62,15 @@ export const getProperties = async (): Promise<Property[]> => {
   });
 };
 
+export const getProperty = async (id: string): Promise<Property | undefined> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const property = properties.find((p) => p.id === id);
+      resolve(property);
+    }, 100);
+  });
+};
+
 export const getPropertyById = async (id: string): Promise<Property | undefined> => {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -97,10 +107,33 @@ export const updateProperty = async (id: string, updates: Partial<Property>): Pr
   });
 };
 
+export const deleteProperty = async (id: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const index = properties.findIndex((p) => p.id === id);
+      if (index === -1) {
+        reject(new Error("Property not found"));
+        return;
+      }
+      properties.splice(index, 1);
+      resolve();
+    }, 100);
+  });
+};
+
 // Tenant functions
 export const getTenants = async (): Promise<Tenant[]> => {
   return new Promise((resolve) => {
     setTimeout(() => resolve([...tenants]), 100);
+  });
+};
+
+export const getTenant = async (id: string): Promise<Tenant | undefined> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const tenant = tenants.find((t) => t.id === id);
+      resolve(tenant);
+    }, 100);
   });
 };
 
