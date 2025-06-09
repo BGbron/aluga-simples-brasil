@@ -1,4 +1,3 @@
-
 import { Property, Tenant, Payment } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { generatePaymentForTenant } from "./supabaseQueries";
@@ -190,7 +189,24 @@ export const getPayments = async (): Promise<Payment[]> => {
     throw error;
   }
   
-  return data || [];
+  // Map Supabase format to our interface
+  return (data || []).map(payment => ({
+    id: payment.id,
+    tenantId: payment.tenant_id,
+    propertyId: payment.property_id,
+    amount: payment.amount,
+    dueDate: payment.due_date,
+    paidDate: payment.paid_date,
+    status: payment.status as 'pending' | 'paid' | 'overdue',
+    description: payment.description,
+    // Keep original fields for compatibility
+    tenant_id: payment.tenant_id,
+    property_id: payment.property_id,
+    due_date: payment.due_date,
+    paid_date: payment.paid_date,
+    created_at: payment.created_at,
+    updated_at: payment.updated_at,
+  }));
 };
 
 export const updatePayment = async (id: string, updates: Partial<Payment>): Promise<Payment> => {
@@ -213,5 +229,52 @@ export const updatePayment = async (id: string, updates: Partial<Payment>): Prom
     throw error;
   }
   
-  return data;
+  // Map back to our interface
+  return {
+    id: data.id,
+    tenantId: data.tenant_id,
+    propertyId: data.property_id,
+    amount: data.amount,
+    dueDate: data.due_date,
+    paidDate: data.paid_date,
+    status: data.status as 'pending' | 'paid' | 'overdue',
+    description: data.description,
+    tenant_id: data.tenant_id,
+    property_id: data.property_id,
+    due_date: data.due_date,
+    paid_date: data.paid_date,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  };
+};
+
+export const getPaymentsForTenant = async (tenantId: string): Promise<Payment[]> => {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .order('due_date', { ascending: false });
+  
+  if (error) {
+    console.error('Error fetching payments for tenant:', error);
+    throw error;
+  }
+  
+  // Map Supabase format to our interface
+  return (data || []).map(payment => ({
+    id: payment.id,
+    tenantId: payment.tenant_id,
+    propertyId: payment.property_id,
+    amount: payment.amount,
+    dueDate: payment.due_date,
+    paidDate: payment.paid_date,
+    status: payment.status as 'pending' | 'paid' | 'overdue',
+    description: payment.description,
+    tenant_id: payment.tenant_id,
+    property_id: payment.property_id,
+    due_date: payment.due_date,
+    paid_date: payment.paid_date,
+    created_at: payment.created_at,
+    updated_at: payment.updated_at,
+  }));
 };

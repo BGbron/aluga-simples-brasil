@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Search, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { getPayments, updatePayment, getTenants, getProperties, generateMonthlyPayments, updateOverduePayments } from "@/lib/mockData";
+import { getPayments, updatePayment, getTenants, getProperties } from "@/lib/mockData";
+import { generateMonthlyPayments, updateOverduePayments } from "@/lib/supabaseQueries";
 import { toast } from "@/components/ui/sonner";
 import {
   Select,
@@ -232,45 +233,6 @@ const Payments = () => {
       )}
     </div>
   );
-};
-
-const getStatusVariant = (status: string) => {
-  switch (status) {
-    case "paid":
-      return "default" as const;
-    case "overdue":
-      return "destructive" as const;
-    case "pending":
-      return "secondary" as const;
-    default:
-      return "outline" as const;
-  }
-};
-
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case "paid":
-      return <CheckCircle className="h-4 w-4" />;
-    case "overdue":
-      return <AlertCircle className="h-4 w-4" />;
-    case "pending":
-      return <Clock className="h-4 w-4" />;
-    default:
-      return <Clock className="h-4 w-4" />;
-  }
-};
-
-const getStatusText = (status: string) => {
-  switch (status) {
-    case "paid":
-      return "Pago";
-    case "overdue":
-      return "Em atraso";
-    case "pending":
-      return "Pendente";
-    default:
-      return "Pendente";
-  }
 };
 
 export default Payments;
