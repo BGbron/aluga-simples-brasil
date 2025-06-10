@@ -1,12 +1,18 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Payment, Tenant, Property } from "./types";
 
 // Property functions
 export const getProperties = async (): Promise<Property[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('properties')
     .select('*')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   
   if (error) {
@@ -183,9 +189,16 @@ export const deleteProperty = async (id: string): Promise<void> => {
 
 // Tenant functions
 export const getTenants = async (): Promise<Tenant[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('tenants')
     .select('*')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   
   if (error) {
@@ -322,9 +335,16 @@ export const deleteTenant = async (id: string): Promise<void> => {
 
 // Payment functions
 export const getPayments = async (): Promise<Payment[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('payments')
     .select('*')
+    .eq('user_id', user.id)
     .order('due_date', { ascending: false });
   
   if (error) {
@@ -351,10 +371,17 @@ export const getPayments = async (): Promise<Payment[]> => {
 };
 
 export const getPaymentsForTenant = async (tenantId: string): Promise<Payment[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('payments')
     .select('*')
     .eq('tenant_id', tenantId)
+    .eq('user_id', user.id)
     .order('due_date', { ascending: false });
   
   if (error) {
@@ -462,10 +489,17 @@ export const updateOverduePayments = async () => {
 
 // Get available properties (not occupied)
 export const getAvailableProperties = async (): Promise<Property[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('properties')
     .select('*')
     .eq('status', 'available')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   
   if (error) {
@@ -491,3 +525,5 @@ export const getAvailableProperties = async (): Promise<Property[]> => {
     dueDay: property.due_day,
   }));
 };
+
+export const getPropertyById = getProperty;

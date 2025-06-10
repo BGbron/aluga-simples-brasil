@@ -3,15 +3,18 @@
 export { 
   getProperties, 
   getProperty, 
+  getPropertyById,
   addProperty, 
   updateProperty, 
   deleteProperty,
   getTenants,
   getTenant,
+  getTenantById,
   addTenant,
   updateTenant,
   deleteTenant,
   getPayments,
+  getPaymentsForTenant,
   updatePayment
 } from './supabaseQueries';
 
