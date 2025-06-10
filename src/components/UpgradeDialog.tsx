@@ -57,7 +57,7 @@ const UpgradeDialog = ({ open, onOpenChange }: UpgradeDialogProps) => {
         <div className="space-y-4">
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border">
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">R$ 29,90</div>
+              <div className="text-3xl font-bold text-blue-600">R$ 48,90</div>
               <div className="text-sm text-gray-600">por mês</div>
             </div>
           </div>
