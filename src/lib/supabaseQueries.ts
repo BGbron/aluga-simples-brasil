@@ -525,5 +525,3 @@ export const getAvailableProperties = async (): Promise<Property[]> => {
     dueDay: property.due_day,
   }));
 };
-
-export const getPropertyById = getProperty;

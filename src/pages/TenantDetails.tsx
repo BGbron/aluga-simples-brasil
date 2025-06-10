@@ -1,15 +1,14 @@
+
 import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenant, getPaymentsForTenant, updatePayment } from "@/lib/supabaseQueries";
-import { Payment } from "@/lib/types";
-import { CalendarDays, CreditCard, User, Home, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Payment, Tenant } from "@/lib/types";
+import { User } from "lucide-react";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import PaymentStatusSelect from "@/components/PaymentStatusSelect";
 
@@ -21,39 +20,33 @@ const TenantDetails = () => {
 
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<"pending" | "paid" | "overdue" | null>(null);
 
-  const { data: tenant, isLoading: isTenantLoading } = useQuery(
-    ["tenant", id],
-    () => getTenant(id as string),
-    {
-      enabled: !!id,
-    }
-  );
+  const { data: tenant, isLoading: isTenantLoading } = useQuery({
+    queryKey: ["tenant", id],
+    queryFn: () => getTenant(id as string),
+    enabled: !!id,
+  });
 
-  const { data: payments, isLoading: isPaymentsLoading } = useQuery(
-    ["payments", id],
-    () => getPaymentsForTenant(id as string),
-    {
-      enabled: !!id,
-    }
-  );
+  const { data: payments, isLoading: isPaymentsLoading } = useQuery({
+    queryKey: ["payments", id],
+    queryFn: () => getPaymentsForTenant(id as string),
+    enabled: !!id,
+  });
 
-  const updatePaymentMutation = useMutation(
-    (payment: Payment) => updatePayment(payment.id, payment),
-    {
-      onSuccess: () => {
-        toast({
-          title: "Pagamento atualizado com sucesso!",
-        });
-        queryClient.invalidateQueries(["payments", id]);
-      },
-      onError: () => {
-        toast({
-          title: "Erro ao atualizar pagamento.",
-          variant: "destructive",
-        });
-      },
-    }
-  );
+  const updatePaymentMutation = useMutation({
+    mutationFn: (payment: Payment) => updatePayment(payment.id, payment),
+    onSuccess: () => {
+      toast({
+        title: "Pagamento atualizado com sucesso!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["payments", id] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao atualizar pagamento.",
+        variant: "destructive",
+      });
+    },
+  });
 
   if (isTenantLoading) {
     return <div>Carregando informações do inquilino...</div>;
@@ -144,7 +137,6 @@ const TenantDetails = () => {
       <Card className="max-w-2xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
             Histórico de Pagamentos
           </CardTitle>
         </CardHeader>
