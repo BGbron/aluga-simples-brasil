@@ -48,7 +48,7 @@ serve(async (req) => {
               name: "Plano Premium - Imóveis Ilimitados",
               description: "Cadastre imóveis ilimitados e acesse recursos premium"
             },
-            unit_amount: 4890, // R$ 48,90 em centavos
+            unit_amount: 4990, // R$ 49,90 em centavos
             recurring: { interval: "month" },
           },
           quantity: 1,
