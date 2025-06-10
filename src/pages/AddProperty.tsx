@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Building } from "lucide-react";
-import { addProperty } from "@/lib/mockData";
+import { addProperty } from "@/lib/supabaseQueries";
 
 const AddProperty = () => {
   const navigate = useNavigate();

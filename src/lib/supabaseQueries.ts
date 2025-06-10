@@ -66,6 +66,9 @@ export const getProperty = async (id: string): Promise<Property | undefined> => 
   };
 };
 
+// Alias for backward compatibility
+export const getPropertyById = getProperty;
+
 export const addProperty = async (property: Omit<Property, "id">): Promise<Property> => {
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -228,6 +231,9 @@ export const getTenant = async (id: string): Promise<Tenant | undefined> => {
   };
 };
 
+// Alias for backward compatibility
+export const getTenantById = getTenant;
+
 export const addTenant = async (tenant: Omit<Tenant, "id">): Promise<Tenant> => {
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -323,6 +329,36 @@ export const getPayments = async (): Promise<Payment[]> => {
   
   if (error) {
     console.error('Error fetching payments:', error);
+    throw error;
+  }
+  
+  return (data || []).map(payment => ({
+    id: payment.id,
+    tenantId: payment.tenant_id,
+    propertyId: payment.property_id,
+    amount: payment.amount,
+    dueDate: payment.due_date,
+    paidDate: payment.paid_date,
+    status: payment.status as 'pending' | 'paid' | 'overdue',
+    description: payment.description,
+    tenant_id: payment.tenant_id,
+    property_id: payment.property_id,
+    due_date: payment.due_date,
+    paid_date: payment.paid_date,
+    created_at: payment.created_at,
+    updated_at: payment.updated_at,
+  }));
+};
+
+export const getPaymentsForTenant = async (tenantId: string): Promise<Payment[]> => {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .order('due_date', { ascending: false });
+  
+  if (error) {
+    console.error('Error fetching payments for tenant:', error);
     throw error;
   }
   
