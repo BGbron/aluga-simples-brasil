@@ -3,8 +3,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Check, Crown, Loader2 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 
 interface UpgradeDialogProps {
   open: boolean;
@@ -13,31 +11,12 @@ interface UpgradeDialogProps {
 
 const UpgradeDialog = ({ open, onOpenChange }: UpgradeDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const { session } = useAuth();
 
   const handleUpgrade = async () => {
-    if (!session) return;
-
     setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) {
-        console.error('Error creating checkout:', error);
-        return;
-      }
-
-      // Redirect to Stripe checkout directly (avoids popup blockers)
-      window.location.href = data.url;
-    } catch (error) {
-      console.error('Error creating checkout:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    
+    // Usar o link direto do Stripe fornecido
+    window.location.href = "https://buy.stripe.com/test_bJeaEP1LC1FN7I3byiaEE00";
   };
 
   return (
@@ -91,7 +70,7 @@ const UpgradeDialog = ({ open, onOpenChange }: UpgradeDialogProps) => {
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processando...
+                Redirecionando...
               </>
             ) : (
               <>

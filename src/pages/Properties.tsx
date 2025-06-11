@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Properties = () => {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-  const { subscriptionData } = useAuth();
+  const { subscriptionData, checkSubscription } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -22,7 +21,7 @@ const Properties = () => {
     queryFn: getProperties,
   });
 
-  // Check for success/cancel parameters
+  // Check for success/cancel parameters and update subscription status
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('success') === 'true') {
@@ -30,6 +29,10 @@ const Properties = () => {
         title: "Assinatura realizada com sucesso!",
         description: "Seu plano Premium foi ativado. Agora você pode cadastrar imóveis ilimitados!",
       });
+      // Verificar status da assinatura após pagamento
+      setTimeout(() => {
+        checkSubscription();
+      }, 2000);
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (urlParams.get('canceled') === 'true') {
       toast({
@@ -39,7 +42,12 @@ const Properties = () => {
       });
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [toast]);
+  }, [toast, checkSubscription]);
+
+  // Verificar assinatura quando a página carrega
+  useEffect(() => {
+    checkSubscription();
+  }, [checkSubscription]);
 
   const handleAddProperty = () => {
     if (!subscriptionData.subscribed && properties.length >= 2) {
